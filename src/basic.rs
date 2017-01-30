@@ -232,7 +232,6 @@ mod tests {
     use super::FuzzyToken::*;
     use super::FuzzyValue::*;
 
-
     #[test]
     fn zero_token_test() {
         let ft = FuzzyToken::zero_token();
