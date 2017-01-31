@@ -161,6 +161,11 @@
     true,
     false
   ],
+  "isOutputTransition": [
+    false,
+    false,
+    true
+  ],
   "weights": {
     "0": {
       "0": 1.0
