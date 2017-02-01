@@ -166,7 +166,6 @@ impl ExecutableFuzzyTable for OneXTwoTable {
     }
 }
 
-
 pub struct TwoXOneTable  {
     values: [TableValue; 36],
 }

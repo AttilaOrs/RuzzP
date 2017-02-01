@@ -105,9 +105,10 @@ fn deseralize(what :&str) -> Result<i32> {
      assert_length!(weigths, pl_nr, WEIGTHS);
 
      let table_jsons  = mine!(obj, as_array, TBL_TRS);
-     let tables = mine_tables(table_jsons);
+     let tables = mine_tables(table_jsons)?;
+     assert_length!(tables, tr_nr, TBL_TRS);
 
-     println!("{:?}", weigths);
+
 
 
      Ok(12)
@@ -134,6 +135,7 @@ fn mine_tables(table_jsons: &Vec<Json>) ->Result<Vec<FuzzyTableE>> {
     }
     Ok(to_ret)
 }
+
  fn mine_oxo(data : &BTreeMap<String, Json> ) -> FuzzyTableE {
      FuzzyTableE::oxo(OneXOneTable::default_table())
  }
@@ -228,6 +230,6 @@ mod tests {
         let ww = super::my_file_read("inputs/TwoLoopPetriNet.json");
         let rez = super::deseralize(&ww);
         println!("{:?}", rez);
-        assert!(false);
+        assert!(true);
     }
 }
