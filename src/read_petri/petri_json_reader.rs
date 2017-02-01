@@ -131,25 +131,109 @@ fn mine_tables(table_jsons: &Vec<Json>) ->Result<Vec<FuzzyTableE>> {
             "2x2" => mine_txt(table_data_obj),
             _     => {return Err(WrongJsonValue(TBL_TYPE))}
         };
-        to_ret.push(table);
+        to_ret.push(table?);
     }
     Ok(to_ret)
 }
 
- fn mine_oxo(data : &BTreeMap<String, Json> ) -> FuzzyTableE {
-     FuzzyTableE::oxo(OneXOneTable::default_table())
+ static VAL_TBL: &'static str = "valTable";
+
+ fn mine_oxo(data : &BTreeMap<String, Json> ) -> Result<FuzzyTableE> {
+     let value_table = mine!(data, as_object, VAL_TBL);
+     let mut table_arr = [TableValue::Phi; 6];
+
+     for (key, value) in value_table {
+         let value_str = value.as_string().ok_or(WrongJsonValue("fuzzy value"))?;
+         let key_table_value = mine_table_val(&key)?;
+         let value_table_value = mine_table_val(&value_str)?;
+         table_arr[key_table_value.index()] = value_table_value;
+     }
+     Ok(FuzzyTableE::oxo(OneXOneTable::from_arr(table_arr)))
  }
 
- fn mine_txo(data : &BTreeMap<String, Json> ) -> FuzzyTableE {
-     FuzzyTableE::txo(TwoXOneTable::default_table())
+ static RULE_TBL: &'static str = "ruleTable";
+ fn mine_txo(data : &BTreeMap<String, Json> ) -> Result<FuzzyTableE> {
+     let value_table = mine!(data, as_object, RULE_TBL);
+     let mut tbl = [TableValue::Phi; 36];
+     for (big_index_str, value) in value_table {
+        let big_index = mine_table_val(&big_index_str)?.index();
+        let small_tbl = value.as_object().ok_or(WrongJsonValue("fuzzy value"))?;
+        for (small_index_str, final_val_json) in small_tbl {
+            let small_index = mine_table_val(&small_index_str)?.index();
+            let final_fv = mine_table_val(final_val_json.as_string().ok_or(WrongJsonValue("fuzzy value") )?)?;
+            tbl[big_index*6 + small_index] = final_fv;
+        }
+     }
+     Ok(FuzzyTableE::txo(TwoXOneTable::from_arr(tbl)))
  }
 
- fn mine_oxt(data : &BTreeMap<String, Json> ) -> FuzzyTableE {
-     FuzzyTableE::oxt(OneXTwoTable::default_table())
+ static VAL_TBL1: &'static str = "valTable1";
+ static VAL_TBL2: &'static str = "valTable2";
+
+ fn mine_oxt(data : &BTreeMap<String, Json> ) -> Result<FuzzyTableE> {
+     let value_table1 = mine!(data, as_object, VAL_TBL1);
+     let value_table2 = mine!(data, as_object, VAL_TBL2);
+     let mut table_arr = [TableValue::Phi; 12];
+
+     for (key, value) in value_table1 {
+         let value_str = value.as_string().ok_or(WrongJsonValue("fuzzy value"))?;
+         let key_table_value = mine_table_val(&key)?;
+         let value_table_value = mine_table_val(&value_str)?;
+         table_arr[key_table_value.index()*2] = value_table_value;
+     }
+
+     for (key, value) in value_table2 {
+         let value_str = value.as_string().ok_or(WrongJsonValue("fuzzy value"))?;
+         let key_table_value = mine_table_val(&key)?;
+         let value_table_value = mine_table_val(&value_str)?;
+         table_arr[key_table_value.index()*2 +1 ] = value_table_value;
+     }
+
+     Ok(FuzzyTableE::oxt(OneXTwoTable::from_arr(table_arr)))
+ }
+ static RULE_TBL1: &'static str = "ruleTable1";
+ static RULE_TBL2: &'static str = "ruleTable2";
+ fn mine_txt(data : &BTreeMap<String, Json> ) -> Result<FuzzyTableE> {
+
+     let value_table1 = mine!(data, as_object, RULE_TBL1);
+     let value_table2 = mine!(data, as_object, RULE_TBL2);
+     let mut tbl = [TableValue::Phi; 72];
+
+     for (big_index_str, value) in value_table1 {
+        let big_index = mine_table_val(&big_index_str)?.index();
+        let small_tbl = value.as_object().ok_or(WrongJsonValue("fuzzy value"))?;
+        for (small_index_str, final_val_json) in small_tbl {
+            let small_index = mine_table_val(&small_index_str)?.index();
+            let final_fv = mine_table_val(final_val_json.as_string().ok_or(WrongJsonValue("fuzzy value") )?)?;
+            tbl[(big_index*6 + small_index) * 2] = final_fv;
+        }
+     }
+
+     for (big_index_str, value) in value_table2 {
+        let big_index = mine_table_val(&big_index_str)?.index();
+        let small_tbl = value.as_object().ok_or(WrongJsonValue("fuzzy value"))?;
+        for (small_index_str, final_val_json) in small_tbl {
+            let small_index = mine_table_val(&small_index_str)?.index();
+            let final_fv = mine_table_val(final_val_json.as_string().ok_or(WrongJsonValue("fuzzy value") )?)?;
+            tbl[(big_index*6 + small_index) * 2 +1] = final_fv;
+        }
+     }
+
+
+     Ok(FuzzyTableE::txt(TwoXTwoTable::from_arr(tbl)))
  }
 
- fn mine_txt(data : &BTreeMap<String, Json> ) -> FuzzyTableE {
-     FuzzyTableE::txt(TwoXTwoTable::default_table())
+ fn mine_table_val(what : &str) -> Result<TableValue> {
+     let rez = match what {
+         "NL" =>  TableValue::E(FuzzyValue::NL),
+         "NM" =>  TableValue::E(FuzzyValue::NM),
+         "ZR" =>  TableValue::E(FuzzyValue::ZR),
+         "PM" =>  TableValue::E(FuzzyValue::PM),
+         "PL" =>  TableValue::E(FuzzyValue::PL),
+         "FF" =>  TableValue::Phi,
+           _  => {return Err(WrongJsonValue("fuzzy value"))},
+     };
+     Ok(rez)
  }
 
 fn mine_weigth(weigth: &BTreeMap<String, Json>) -> Result<Vec<(usize, usize, f32)>> {
@@ -182,6 +266,7 @@ fn mine_arcs( arc_jsons: &Vec<Json>,  talking_about: &'static str ) -> Result<Ve
             to_push.push(one_val as usize);
         }
         to_ret.push(to_push);
+
 
     }
     Ok(to_ret)

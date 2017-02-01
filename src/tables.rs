@@ -2,7 +2,7 @@ use basic::*;
 use basic::FuzzyValue::*;
 use self::TableValue::*;
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug,Clone, Copy)]
 pub enum TableValue {
     Phi,
     E(FuzzyValue),
@@ -10,7 +10,7 @@ pub enum TableValue {
 
 
 impl TableValue {
-    fn index(&self) -> usize {
+    pub fn index(&self) -> usize {
         match *self {
             Phi => 5,
             E(fv) => fv.index(),
