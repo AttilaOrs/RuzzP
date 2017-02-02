@@ -13,6 +13,7 @@ use self::NotExpectedJsonFormat::*;
 
 extern crate rustc_serialize;
 use self::rustc_serialize::json::Json;
+use std::mem;
 
 #[derive(Debug)]
 enum NotExpectedJsonFormat {
@@ -73,7 +74,7 @@ macro_rules! assert_length {
 }
 
 
-fn deseralize(what :&str) -> Result<i32> {
+fn deseralize(what :&str) -> Result<FuzzyPetriNetBuilder> {
      let data = Json::from_str(what).unwrap();
      let obj = data.as_object().unwrap();
 
@@ -89,7 +90,7 @@ fn deseralize(what :&str) -> Result<i32> {
      assert_length!(out_tr, tr_nr, OUT_TR);
 
      let inital_marking_jsons = mine!(obj, as_array, INIT_PL);
-     let init_marking  = mine_init_marking(inital_marking_jsons)?;
+     let mut init_marking  = mine_init_marking(inital_marking_jsons)?;
      assert_length!(init_marking, pl_nr, INIT_PL);
 
      let tr_to_pl_jsons  = mine!(obj, as_array, TR_TO_PL);
@@ -105,13 +106,51 @@ fn deseralize(what :&str) -> Result<i32> {
      assert_length!(weigths, pl_nr, WEIGTHS);
 
      let table_jsons  = mine!(obj, as_array, TBL_TRS);
-     let tables = mine_tables(table_jsons)?;
+     let mut tables = mine_tables(table_jsons)?;
      assert_length!(tables, tr_nr, TBL_TRS);
 
 
+     let mut bld = FuzzyPetriNetBuilder::new();
 
+     for tr_id in 0..tr_nr {
+         if out_tr[tr_id] {
+             bld.add_out_trans(extact_from_vec(&mut tables, tr_id));
+         } else {
+             //TODO where the fuck are the delays ??
+             bld.add_trans(0,extact_from_vec(&mut tables, tr_id));
+         }
+     }
 
-     Ok(12)
+     for pl_id in 0..pl_nr {
+         if inp_pl[pl_id] {
+             bld.add_inp_place();
+         } else {
+             bld.add_place();
+         }
+         bld.set_initial_token(pl_id, extract_from_token_map(&mut init_marking, pl_id));
+     }
+
+     for (pl_id, tr_id, weight) in weigths {
+         bld.add_arc_from_place_to_trans(pl_id, tr_id, weight);
+     }
+
+     for tr_id in 0..tr_to_pl.len() {
+         for pl_id in &tr_to_pl[tr_id] {
+             bld.add_arc_from_trans_to_place(tr_id, *pl_id);
+         }
+     }
+
+     Ok(bld)
+}
+
+fn extact_from_vec(vec :&mut Vec<FuzzyTableE>, tr_id:usize) -> FuzzyTableE {
+    let replace_with = FuzzyTableE::oxo(OneXOneTable::default_table());
+    mem::replace(&mut vec[tr_id], replace_with)
+}
+
+fn extract_from_token_map(vec :&mut Vec<FuzzyToken>, pl_id: usize ) -> FuzzyToken {
+    let replace_with = FuzzyToken::Phi;
+    mem::replace(&mut vec[pl_id], replace_with)
 }
 
 fn mine_tables(table_jsons: &Vec<Json>) ->Result<Vec<FuzzyTableE>> {
@@ -309,12 +348,20 @@ fn mine_init_marking(inital_markings: &Vec<Json>) -> Result<Vec<FuzzyToken>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use petri_net::DotStringBuilder;
+
+
 
     #[test]
     fn ww() {
-        let ww = super::my_file_read("inputs/TwoLoopPetriNet.json");
-        let rez = super::deseralize(&ww);
-        println!("{:?}", rez);
+        let ww = super::my_file_read("inputs/SimpleDelayPetriNet.json");
+        let rez = super::deseralize(&ww).unwrap();
+        let (net, _) = rez.build();
+        let dot_bld = DotStringBuilder::build(&net);
+        //dot_bld.write_to_file("hey.txt");
+
+
+        //println!("{:?}", rez);
         assert!(true);
     }
 }
