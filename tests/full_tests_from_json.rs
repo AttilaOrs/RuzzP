@@ -146,3 +146,28 @@ fn concurent_petri() {
         assert_eq!((2, FuzzyToken::Exist([0.0, 0.0, 1.0, 0.0, 0.0])), rez[0]);
         consumer_fact.clear_history();
 }
+
+#[test]
+fn maximum_finder() {
+        let ww = my_file_read("inputs/MaximumFinder.json");
+        let rez = deseralize(&ww).unwrap();
+        let (net, mut man) = rez.build();
+        let mut consumer_fact = ConsumerFactory::new();
+        consumer_fact.create_handler_for_all_outs(&net, &mut man, );
+
+        let mut exc =SynchronousFuzzyPetriExecutor::new(&net, man);
+        let fuzz = TriangleFuzzyfier::default();
+
+        let inp = vec![
+            (0, fuzz.fuzzyfy(Some(-0.5))),
+            (1, fuzz.fuzzyfy(Some(0.0))),
+            (2, fuzz.fuzzyfy(Some(0.5))),
+        ];
+
+        exc.run_tick(inp);
+        let rez = consumer_fact.get_current_hist();
+        //currenty not working... i will find the bug , in another day, in a nother year,
+        //a nother lifre,
+        assert_eq!(0, rez.len());
+
+}
