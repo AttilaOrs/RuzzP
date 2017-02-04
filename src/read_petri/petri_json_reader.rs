@@ -16,13 +16,13 @@ use self::rustc_serialize::json::Json;
 use std::mem;
 
 #[derive(Debug)]
-enum NotExpectedJsonFormat {
+pub enum NotExpectedJsonFormat {
     JsonKeyNotFound(&'static str),
     WrongNumberOfStuff(&'static str),
     WrongJsonValue(&'static str),
 }
 
-type Result<T> = std::result::Result<T, NotExpectedJsonFormat>;
+pub type Result<T> = std::result::Result<T, NotExpectedJsonFormat>;
 
 impl fmt::Display for NotExpectedJsonFormat {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -39,7 +39,7 @@ impl fmt::Display for NotExpectedJsonFormat {
 }
 
 
-fn my_file_read(fname: &str) -> String {
+pub fn my_file_read(fname: &str) -> String {
     let path = Path::new(fname);
     let mut f = File::open(&path)
         .expect("File reading problem");
@@ -47,6 +47,7 @@ fn my_file_read(fname: &str) -> String {
     f.read_to_string(&mut s).expect("Somthing went reaaly wrong");
     s
 }
+
 static TR_NR: &'static str = "transitionCntr";
 static PL_NR: &'static str = "placeCntr";
 static INP_PL: &'static str = "isInputPlaces";
@@ -60,6 +61,8 @@ static WEIGTHS: &'static str = "weights";
 static TBL_TRS: &'static str = "tableForTransition";
 static TBL_TYPE: &'static str = "type";
 static TBL_DATA: &'static str = "data";
+static DELAY: &'static str = "delayForTransition";
+
 macro_rules! mine {
     ($obj:ident, $fnc:ident, $idd: ident ) => {
          $obj.get($idd).ok_or(JsonKeyNotFound($idd))?
@@ -74,7 +77,7 @@ macro_rules! assert_length {
 }
 
 
-fn deseralize(what :&str) -> Result<FuzzyPetriNetBuilder> {
+pub fn deseralize(what :&str) -> Result<FuzzyPetriNetBuilder> {
      let data = Json::from_str(what).unwrap();
      let obj = data.as_object().unwrap();
 
@@ -109,6 +112,10 @@ fn deseralize(what :&str) -> Result<FuzzyPetriNetBuilder> {
      let mut tables = mine_tables(table_jsons)?;
      assert_length!(tables, tr_nr, TBL_TRS);
 
+     let delay_jsons = mine!(obj, as_array, DELAY);
+     let delays = mine_delys(delay_jsons)?;
+     assert_length!(delays, tr_nr, DELAY);
+
 
      let mut bld = FuzzyPetriNetBuilder::new();
 
@@ -116,8 +123,7 @@ fn deseralize(what :&str) -> Result<FuzzyPetriNetBuilder> {
          if out_tr[tr_id] {
              bld.add_out_trans(extact_from_vec(&mut tables, tr_id));
          } else {
-             //TODO where the fuck are the delays ??
-             bld.add_trans(0,extact_from_vec(&mut tables, tr_id));
+             bld.add_trans(delays[tr_id], extact_from_vec(&mut tables, tr_id));
          }
      }
 
@@ -311,6 +317,17 @@ fn mine_arcs( arc_jsons: &Vec<Json>,  talking_about: &'static str ) -> Result<Ve
     Ok(to_ret)
 }
 
+
+fn mine_delys(delays: &Vec<Json>) -> Result<Vec<i32>> {
+    let mut to_ret = Vec::new();
+    for v in delays {
+        let unmined = v.as_i64()
+            .ok_or(WrongJsonValue(DELAY))?;
+        to_ret.push(unmined as i32);
+    }
+    Ok(to_ret)
+}
+
 fn mine_bool_vec(bools: &Vec<Json>, talking_about: &'static str) -> Result<Vec<bool>> {
     let mut to_ret = Vec::new();
     for v in bools {
@@ -347,21 +364,19 @@ fn mine_init_marking(inital_markings: &Vec<Json>) -> Result<Vec<FuzzyToken>> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use petri_net::DotStringBuilder;
-
-
 
     #[test]
-    fn ww() {
+    fn deserailze_test() {
         let ww = super::my_file_read("inputs/SimpleDelayPetriNet.json");
         let rez = super::deseralize(&ww).unwrap();
         let (net, _) = rez.build();
-        let dot_bld = DotStringBuilder::build(&net);
-        //dot_bld.write_to_file("hey.txt");
 
+        assert_eq!(net.get_trans_nr(), 3);
+        assert_eq!(net.get_place_nr(), 4);
+        assert_eq!(net.is_trans_out(0), false);
+        assert_eq!(net.is_trans_out(2), true);
 
-        //println!("{:?}", rez);
-        assert!(true);
+        assert_eq!(net.is_place_inp(0), false);
+        assert_eq!(net.is_place_inp(2), true);
     }
 }
