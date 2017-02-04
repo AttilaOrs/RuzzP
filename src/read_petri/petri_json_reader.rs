@@ -106,7 +106,6 @@ pub fn deseralize(what :&str) -> Result<FuzzyPetriNetBuilder> {
 
      let weigth_jsons  = mine!(obj, as_object, WEIGTHS);
      let weigths = mine_weigth(weigth_jsons)?;
-     assert_length!(weigths, pl_nr, WEIGTHS);
 
      let table_jsons  = mine!(obj, as_array, TBL_TRS);
      let mut tables = mine_tables(table_jsons)?;

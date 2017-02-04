@@ -45,7 +45,7 @@ impl<'a> BasicFuzzyPetriExecutor<'a> {
             for index in 0.. self.trans_order.len(){
                 let tr_id = self.trans_order[index];
                 match self.is_fireable(tr_id){
-                    None => {/*does nothing */},
+                    None => {/* do nothin*/},
                     Some(inps) => {
                         heappened_something = true;
                         self.start_fire(tr_id, inps);
@@ -53,6 +53,7 @@ impl<'a> BasicFuzzyPetriExecutor<'a> {
                 }
             }
         }
+
     }
 
     pub fn update_delay_state(&mut self) {
@@ -160,7 +161,7 @@ fn order_of_transitions(net: &FuzzyPetriNet) -> Vec<usize> {
         if ! found {
             if net.is_trans_out(tr_id) {
                 out_trs.push(tr_id);
-                break;
+                continue;
             }
 
             if net.get_delay(tr_id) == 0{
