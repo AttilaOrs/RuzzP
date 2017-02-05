@@ -62,6 +62,7 @@ static TBL_TRS: &'static str = "tableForTransition";
 static TBL_TYPE: &'static str = "type";
 static TBL_DATA: &'static str = "data";
 static DELAY: &'static str = "delayForTransition";
+static PL_NEED_TR: &'static str = "placesNeededForTrans";
 
 macro_rules! mine {
     ($obj:ident, $fnc:ident, $idd: ident ) => {
@@ -104,6 +105,11 @@ pub fn deseralize(what :&str) -> Result<FuzzyPetriNetBuilder> {
      let pl_to_tr = mine_arcs(pl_to_tr_jsons, PL_TO_PL)?;
      assert_length!(pl_to_tr, pl_nr, PL_TO_PL);
 
+     let pl_need_tr_jsons = mine!(obj, as_array, PL_NEED_TR);
+     let pl_need_tr = mine_arcs(pl_need_tr_jsons, PL_NEED_TR)?;
+     assert_length!(pl_need_tr, tr_nr, PL_NEED_TR);
+
+
      let weigth_jsons  = mine!(obj, as_object, WEIGTHS);
      let weigths = mine_weigth(weigth_jsons)?;
 
@@ -135,9 +141,21 @@ pub fn deseralize(what :&str) -> Result<FuzzyPetriNetBuilder> {
          bld.set_initial_token(pl_id, extract_from_token_map(&mut init_marking, pl_id));
      }
 
-     for (pl_id, tr_id, weight) in weigths {
-         bld.add_arc_from_place_to_trans(pl_id, tr_id, weight);
+     for tr_id in 0..pl_need_tr.len() {
+         for pl_id in &pl_need_tr[tr_id] {
+             //TODO this should be replaces by a map
+             let mut weigth = 0.0;
+             for &(pl_id_d, tr_id_d, weight_d) in &weigths {
+                 if *pl_id == pl_id_d && tr_id == tr_id_d {
+                     weigth = weight_d ;
+                     break;
+                 }
+             }
+             bld.add_arc_from_place_to_trans(*pl_id, tr_id, weigth);
+
+         }
      }
+
 
      for tr_id in 0..tr_to_pl.len() {
          for pl_id in &tr_to_pl[tr_id] {

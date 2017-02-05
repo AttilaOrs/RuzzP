@@ -1,0 +1,209 @@
+{
+  "delayForTransition": [
+    0,
+    0,
+    0,
+    0
+  ],
+  "tableForTransition": [
+    {
+      "type": "2x1",
+      "data": {
+        "ruleTable": {
+          "NL": {
+            "NL": "ZR",
+            "NM": "NM",
+            "ZR": "NL",
+            "PM": "NL",
+            "PL": "NL",
+            "FF": "FF"
+          },
+          "NM": {
+            "NL": "PM",
+            "NM": "ZR",
+            "ZR": "NM",
+            "PM": "NL",
+            "PL": "NL",
+            "FF": "FF"
+          },
+          "ZR": {
+            "NL": "PL",
+            "NM": "PM",
+            "ZR": "ZR",
+            "PM": "NM",
+            "PL": "NL",
+            "FF": "FF"
+          },
+          "PM": {
+            "NL": "PL",
+            "NM": "PL",
+            "ZR": "PM",
+            "PM": "ZR",
+            "PL": "NM",
+            "FF": "FF"
+          },
+          "PL": {
+            "NL": "PL",
+            "NM": "PL",
+            "ZR": "PL",
+            "PM": "PM",
+            "PL": "ZR",
+            "FF": "FF"
+          },
+          "FF": {
+            "ZR": "FF",
+            "PL": "FF",
+            "NM": "FF",
+            "PM": "FF",
+            "NL": "FF",
+            "FF": "FF"
+          }
+        }
+      }
+    },
+    {
+      "type": "1x2",
+      "data": {
+        "valTable1": {
+          "NL": "ZR",
+          "NM": "ZR",
+          "ZR": "FF",
+          "PM": "FF",
+          "PL": "FF",
+          "FF": "FF"
+        },
+        "valTable2": {
+          "NL": "FF",
+          "NM": "FF",
+          "ZR": "FF",
+          "PM": "ZR",
+          "PL": "ZR",
+          "FF": "FF"
+        }
+      }
+    },
+    {
+      "type": "1x1",
+      "data": {
+        "valTable": {
+          "NL": "NL",
+          "NM": "NM",
+          "ZR": "ZR",
+          "PM": "PM",
+          "PL": "PL",
+          "FF": "FF"
+        }
+      }
+    },
+    {
+      "type": "1x1",
+      "data": {
+        "valTable": {
+          "NL": "NL",
+          "NM": "NM",
+          "ZR": "ZR",
+          "PM": "PM",
+          "PL": "PL",
+          "FF": "FF"
+        }
+      }
+    }
+  ],
+  "fromTransToPlace": [
+    [
+      2
+    ],
+    [
+      3,
+      4
+    ],
+    [],
+    []
+  ],
+  "fromPlaceToTrans": [
+    [
+      0
+    ],
+    [
+      0
+    ],
+    [
+      1
+    ],
+    [
+      2
+    ],
+    [
+      3
+    ]
+  ],
+  "placesNeededForTrans": [
+    [
+      0,
+      1
+    ],
+    [
+      2
+    ],
+    [
+      3
+    ],
+    [
+      4
+    ]
+  ],
+  "initialMarkingOfThePlaces": [
+    {
+      "fuzzyValues": null,
+      "phi": true
+    },
+    {
+      "fuzzyValues": null,
+      "phi": true
+    },
+    {
+      "fuzzyValues": null,
+      "phi": true
+    },
+    {
+      "fuzzyValues": null,
+      "phi": true
+    },
+    {
+      "fuzzyValues": null,
+      "phi": true
+    }
+  ],
+  "isInputPlaces": [
+    true,
+    true,
+    false,
+    false,
+    false
+  ],
+  "isOutputTransition": [
+    false,
+    false,
+    true,
+    true
+  ],
+  "weights": {
+    "0": {
+      "0": 1.0
+    },
+    "1": {
+      "0": 1.0
+    },
+    "2": {
+      "1": 1.0
+    },
+    "3": {
+      "2": 1.0
+    },
+    "4": {
+      "3": 1.0
+    }
+  },
+  "transitionCntr": 4,
+  "placeCntr": 5
+}

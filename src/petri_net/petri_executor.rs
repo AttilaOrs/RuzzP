@@ -4,7 +4,6 @@ use basic::*;
 use std::mem;
 
 
-
 struct BasicFuzzyPetriExecutor<'a> {
     net: &'a FuzzyPetriNet,
     event_manager: EventManager,
@@ -45,10 +44,11 @@ impl<'a> BasicFuzzyPetriExecutor<'a> {
             for index in 0.. self.trans_order.len(){
                 let tr_id = self.trans_order[index];
                 match self.is_fireable(tr_id){
-                    None => {/* do nothin*/},
+                    None => {/*does notin*/},
                     Some(inps) => {
                         heappened_something = true;
                         self.start_fire(tr_id, inps);
+                        break;
                     }
                 }
             }
@@ -95,20 +95,23 @@ impl<'a> BasicFuzzyPetriExecutor<'a> {
         if self.net.is_trans_out(tr_id) {
             self.event_manager.execute_handler(tr_id,
                                                mem::replace(&mut rez[0], FuzzyToken::Phi));
-            return;
+        } else {
+            let out_places = self.net.get_places_after_trans(tr_id);
+            if rez.len() != out_places.len() {
+                panic!("wrong number of ouputs fot tr{},
+                       it has {} from table but {} out places",
+                       tr_id, rez.len(), out_places.len());
+            }
+            for i in 0..rez.len() {
+                 self.place_state[out_places[i]].unite(
+                     mem::replace(&mut rez[i], FuzzyToken::Phi));
+            }
         }
-        let out_places = self.net.get_places_after_trans(tr_id);
-        if rez.len() != out_places.len() {
-            panic!("wrong number of ouputs fot tr{}, it has {} from table but {} out places",
-                   tr_id, rez.len(), out_places.len());
-        }
-        for i in 0..rez.len() {
-             self.place_state[out_places[i]].unite(mem::replace(&mut rez[i], FuzzyToken::Phi));
-        }
+
     }
 
 
-    fn clear_inp_tokens(&mut self, tr_id: usize) {
+    fn clear_inp_tokens(&mut self, tr_id: usize)  {
         let inp_places = self.net.get_places_befor_trans(tr_id);
         for place in inp_places {
             self.place_state[place] = FuzzyToken::Phi;

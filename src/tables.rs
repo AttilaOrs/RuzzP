@@ -1,3 +1,6 @@
+use std::fmt;
+
+
 use basic::*;
 use basic::FuzzyValue::*;
 use self::TableValue::*;
@@ -30,6 +33,7 @@ pub trait ExecutableFuzzyTable {
     fn execute(&self, inps: Vec<FuzzyToken> ) -> Vec<FuzzyToken>;
 }
 
+#[derive(Debug)]
 pub struct OneXOneTable {
     values: [TableValue; 6],
 }
@@ -90,6 +94,7 @@ impl ExecutableFuzzyTable for OneXOneTable {
     }
 }
 
+#[derive(Debug)]
 pub struct OneXTwoTable {
     values: [TableValue; 12],
 }
@@ -170,6 +175,27 @@ pub struct TwoXOneTable  {
     values: [TableValue; 36],
 }
 
+impl fmt::Debug for TwoXOneTable {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut ll = String::new();
+        for fv in 0..self.values.len() {
+            match self.values[fv] {
+                TableValue::Phi => {ll.push_str("FF,")},
+                TableValue::E(val) => {
+                    match val {
+                        FuzzyValue::NL => {ll.push_str("NL,")},
+                        FuzzyValue::NM => {ll.push_str("NM,")},
+                        FuzzyValue::ZR => {ll.push_str("ZR,")},
+                        FuzzyValue::PM => {ll.push_str("PM,")},
+                        FuzzyValue::PL => {ll.push_str("PL,")},
+                    }
+                }
+            }
+
+        }
+        write!(f, "TwoXOneTable {}", ll)
+    }
+}
 impl TwoXOneTable {
     pub fn from_arr(values: [TableValue; 36]) -> TwoXOneTable {
         TwoXOneTable{values : values}
@@ -256,6 +282,28 @@ pub struct TwoXTwoTable  {
     values: [TableValue; 72],
 }
 
+
+impl fmt::Debug for TwoXTwoTable {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut ll = String::new();
+        for fv in 0..self.values.len() {
+            match self.values[fv] {
+                TableValue::Phi => {ll.push_str("FF,")},
+                TableValue::E(val) => {
+                    match val {
+                        FuzzyValue::NL => {ll.push_str("NL,")},
+                        FuzzyValue::NM => {ll.push_str("NM,")},
+                        FuzzyValue::ZR => {ll.push_str("ZR,")},
+                        FuzzyValue::PM => {ll.push_str("PM,")},
+                        FuzzyValue::PL => {ll.push_str("PL,")},
+                    }
+                }
+            }
+
+        }
+        write!(f, "TwoXOneTable {}", ll)
+    }
+}
 impl TwoXTwoTable {
     pub fn from_arr(values: [TableValue; 72]) -> TwoXTwoTable {
         TwoXTwoTable{values : values}

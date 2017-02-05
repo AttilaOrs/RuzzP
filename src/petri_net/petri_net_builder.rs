@@ -5,6 +5,7 @@ use tables::*;
 use basic::*;
 
 #[allow(non_camel_case_types)]
+#[derive(Debug)]
 pub enum FuzzyTableE{
     oxo(OneXOneTable),
     oxt(OneXTwoTable),
@@ -188,6 +189,11 @@ impl FuzzyPetriNet {
     #[inline]
     pub fn table_for_trans(&self, tr_id: usize) ->&ExecutableFuzzyTable {
         self.transs[tr_id].table.get_table()
+    }
+
+    #[inline]
+    pub fn typed_table_for_trans(&self, tr_id: usize) ->&FuzzyTableE {
+        &self.transs[tr_id].table
     }
 
     pub fn get_places_after_trans(&self, tr_id: usize) -> Vec<usize>{
