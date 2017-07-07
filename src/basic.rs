@@ -36,6 +36,47 @@ pub enum FuzzyToken {
     Exist([f32; 5]),
 }
 
+#[derive(PartialEq, Debug, Clone)]
+pub enum UnifiedToken{
+    Phi,
+    Exist(f32),
+}
+
+impl UnifiedToken {
+    pub fn zero_token() -> UnifiedToken {
+        UnifiedToken::Exist(0.0)
+    }
+
+    pub fn from_option(o : Option<f32>) -> UnifiedToken {
+        match o {
+            None => UnifiedToken::Phi ,
+            Some(v) => UnifiedToken::Exist(v),
+        }
+    }
+
+    pub fn from_val(val : f32) -> UnifiedToken {
+        UnifiedToken::Exist(val)
+    }
+
+    pub fn as_option(&self) -> Option<f32>  {
+        match *self {
+            UnifiedToken::Phi => Option::None,
+            UnifiedToken::Exist(v) => Option::Some(v)
+        }
+    }
+
+    pub fn unite(&mut self, t : UnifiedToken) {
+        match t {
+            UnifiedToken::Phi => {/*do nothing*/},
+            UnifiedToken::Exist(v) => {
+                match *self {
+                 UnifiedToken::Exist(ref mut val_place) => {*val_place = (*val_place +v )/2.0 ;},
+                 UnifiedToken::Phi => {mem::replace(self, UnifiedToken::Exist(v));},
+                }
+            },
+        }
+    }
+}
 
 impl FuzzyToken {
 
@@ -228,7 +269,7 @@ impl Defuzzyfier for TriangleFuzzyfier {
 
 #[cfg(test)]
 mod tests {
-    use super::{FuzzyToken,  TriangleFuzzyfier, Fuzzyfier, Defuzzyfier} ;
+    use super::{FuzzyToken,  TriangleFuzzyfier, Fuzzyfier, Defuzzyfier, UnifiedToken} ;
     use super::FuzzyToken::*;
     use super::FuzzyValue::*;
 
@@ -313,6 +354,20 @@ mod tests {
         assert_eq!(fuzzyfier, fuzzyfier_second);
     }
 
+    #[test]
+    fn unified_token_test() {
+        let mut phi =UnifiedToken::Phi;
+        let mut zero = UnifiedToken::zero_token();
+        phi.unite(zero);
+        assert_eq!(phi, UnifiedToken::Exist(0.0));
+    }
 
+    #[test]
+    fn unified_token_test_as_option() {
+        let  phi =UnifiedToken::Phi;
+        let  zero = UnifiedToken::zero_token();
+        assert_eq!(Option::None, phi.as_option());
+        assert_eq!(Option::Some(0.0), zero.as_option());
+    }
 
 }
