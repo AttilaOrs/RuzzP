@@ -162,6 +162,7 @@ pub trait Fuzzyfier {
 
 pub trait Defuzzyfier {
     fn defuzzyfy(&self, tk: FuzzyToken) -> Option<f32>;
+    fn limit(&self, v: f32) -> f32;
 }
 
 #[derive(PartialEq, Debug)]
@@ -249,6 +250,16 @@ impl Fuzzyfier for TriangleFuzzyfier {
 
 
 impl Defuzzyfier for TriangleFuzzyfier {
+
+    fn limit(&self, v: f32) -> f32 {
+        if  v < limits_of!(self, NL)[1] {
+            limits_of!(self, NL)[1]
+        } else if  v > limits_of!(self, PL)[1] {
+            limits_of!(self, PL)[1]
+        } else {
+            v
+        }
+    }
 
     fn defuzzyfy(&self, tk: FuzzyToken) -> Option<f32> {
         match tk {

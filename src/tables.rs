@@ -2,6 +2,7 @@ use std::fmt;
 
 
 use basic::*;
+use basic::UnifiedToken;
 use basic::FuzzyValue::*;
 use self::TableValue::*;
 
@@ -11,6 +12,45 @@ pub enum TableValue {
     E(FuzzyValue),
 }
 
+#[derive(PartialEq, Debug,Clone, Copy)]
+pub enum Operator {
+    Plus, Minus, Mult, Div, NoOp
+}
+const  EPS: f32 =  0.00001;
+
+impl Operator {
+
+    pub fn exists(&self) -> bool {
+        match *self {
+            Operator::NoOp => false,
+            _ => true,
+        }
+    }
+
+    pub fn calc( &self, fi: &UnifiedToken, se: &UnifiedToken) -> Option<f32> {
+
+        match (fi, se) {
+            (&UnifiedToken::Phi, &UnifiedToken::Phi) => None,
+            (&UnifiedToken::Phi, &UnifiedToken::Exist(ref v)) => Some(*v),
+            (&UnifiedToken::Exist(ref v), &UnifiedToken::Phi) => Some(*v),
+            (&UnifiedToken::Exist(ref fi_ref), &UnifiedToken::Exist(ref se_ref)) => {
+                let fi_val = *fi_ref;
+                let se_val = *se_ref;
+                match *self {
+                    Operator::Plus => Some(fi_val +se_val),
+                    Operator::Minus => Some(fi_val - se_val),
+                    Operator::Mult => Some(fi_val *se_val),
+                    Operator::Div => Some( if se_val > EPS  { fi_val / se_val } else {fi_val / EPS} ),
+                    Operator::NoOp => unreachable!(),
+                }
+            }
+
+        }
+
+
+    }
+
+}
 
 impl TableValue {
     pub fn index(&self) -> usize {
@@ -234,6 +274,54 @@ impl ExecutableFuzzyTable for OneXTwoTable {
         vec![to_ret_f, to_ret_s]
     }
 }
+
+pub struct UnifiedTwoXOneTable{
+    fuzzy_table : TwoXOneTable,
+    op : Operator,
+}
+
+
+impl UnifiedTwoXOneTable {
+    pub fn from_arr(values: [TableValue; 36], op : Operator) -> UnifiedTwoXOneTable {
+        UnifiedTwoXOneTable{fuzzy_table: TwoXOneTable::from_arr(values), op : op}
+    }
+
+    pub fn default_table() -> UnifiedTwoXOneTable {
+        UnifiedTwoXOneTable{fuzzy_table: TwoXOneTable::default_table(), op : Operator::NoOp}
+    }
+}
+
+impl ExecutableUnifiedTable for UnifiedTwoXOneTable {
+    fn is_executable(&self, inps: &Vec<UnifiedToken>, fuz: &Vec<&Fuzzyfier> ) -> bool{
+        let ft_one = fuz[0].fuzzyfy(inps[0].as_option());
+        let ft_two = fuz[1].fuzzyfy(inps[1].as_option());
+        self.fuzzy_table.is_executable(&vec![ft_one, ft_two])
+    }
+
+    fn execute(&self, inps: Vec<UnifiedToken>,fuz: &Vec<&Fuzzyfier>, defuz: &Vec<&Defuzzyfier> ) -> Vec<UnifiedToken>{
+        let op_rez = if(self.op.exists()){
+            self.op.calc(&inps[0], &inps[1])
+        } else {
+            None
+        };
+
+        let ft_one = fuz[0].fuzzyfy(inps[0].as_option());
+        let ft_two = fuz[1].fuzzyfy(inps[1].as_option());
+
+        let mut fuzzy_out = self.fuzzy_table.execute(vec![ft_one, ft_two]);
+        let rez = fuzzy_out.pop().expect("Impossible") ;
+        if op_rez.is_none() {
+           let option = defuz[0].defuzzyfy(rez);
+           vec![UnifiedToken::from_option(option)]
+       } else {
+           let defult_driver = TriangleFuzzyfier::with_min_max(-1.0, 1.0);
+           let r = op_rez.expect("Impossible") *defult_driver.defuzzyfy(rez).expect("Impossible");
+           vec![UnifiedToken::from_val( defuz[0].limit( r ))]
+
+       }
+    }
+}
+
 
 pub struct TwoXOneTable  {
     values: [TableValue; 36],
@@ -476,7 +564,7 @@ mod tests {
     #![allow(non_snake_case)]
 
     use super::{ExecutableFuzzyTable, OneXOneTable,  OneXTwoTable, TwoXOneTable, TwoXTwoTable};
-    use super::{ExecutableUnifiedTable, UnifiedOneXOneTable, UnifiedOneXTwoTable};
+    use super::{ExecutableUnifiedTable, UnifiedOneXOneTable, UnifiedOneXTwoTable, UnifiedTwoXOneTable, Operator};
     use basic::{FuzzyToken, UnifiedToken, TriangleFuzzyfier};
     use super::TableValue::*;
     use basic::FuzzyValue::*;
@@ -638,8 +726,31 @@ mod tests {
         assert_eq!(rez,  vec![UnifiedToken::Phi, UnifiedToken::Exist(-2.0)]);
         let rez = table.execute(vec![UnifiedToken::Exist(-0.75)], &vec![&fuzz_one], &vec![&fuzz_one, &fuzz_two]);
         assert_eq!(rez,  vec![UnifiedToken::Exist(0.75), UnifiedToken::Phi]);
+    }
+
+    #[test]
+    fn UnifiedTwoXOneTable_executable_test(){
+        let table = UnifiedTwoXOneTable::default_table();
+        assert!(table.is_executable(&vec![UnifiedToken::zero_token(), UnifiedToken::zero_token()],
+            &vec![ & TriangleFuzzyfier::with_min_max(-1.0,1.0), & TriangleFuzzyfier::with_min_max(-1.0,1.0)]));
+        assert!(! table.is_executable(&vec![UnifiedToken::Phi,UnifiedToken::zero_token()],
+            &vec![ & TriangleFuzzyfier::with_min_max(-1.0,1.0), & TriangleFuzzyfier::with_min_max(-1.0,1.0)]));
 
 
+        let complex_table = UnifiedTwoXOneTable::from_arr(
+            [Phi,   Phi  , Phi  , Phi  , Phi  ,  Phi,
+             E(PL), E(NM), E(NM), E(NM), E(PM),  Phi,
+             E(NM), E(NM), E(NM), E(PM), E(PM), E(ZR),
+             E(NM), E(NM), E(PM), E(PM), E(NM),  Phi,
+             E(NM), E(PM), E(PM), E(NM), E(NM),  Phi,
+             Phi,   E(ZR), Phi,   Phi,   Phi,    E(PL), ],
+             Operator::Plus
+        );
+        assert!(complex_table.is_executable(&vec![UnifiedToken::from_val(-2.0), UnifiedToken::from_val(-2.0)],
+            &vec![ & TriangleFuzzyfier::with_min_max(-5.0,5.0), & TriangleFuzzyfier::with_min_max(-1.0,1.0)]));
+
+        assert!(!complex_table.is_executable(&vec![UnifiedToken::from_val(-2.0), UnifiedToken::from_val(-2.0)],
+                &vec![ & TriangleFuzzyfier::with_min_max(-1.0,1.0), & TriangleFuzzyfier::with_min_max(-5.0,5.0)]))
 
     }
 
@@ -689,9 +800,8 @@ mod tests {
         assert_eq!(rez, vec![t!(0.0, 1.0, 0.0, 0.0, 0.0)]);
         let rez = table.execute(vec![t!(0.0, 0.5, 0.5, 0.0, 0.0), t!(0.5, 0.5, 0.0, 0.0 , 0.0) ]);
         assert_eq!(rez, vec![t!(0.25, 0.75, 0.0, 0.0, 0.0)]);
-
-
     }
+
     #[test]
     fn TwoXOneTable_execute_intreseting_table_test() {
         let table = TwoXOneTable::from_arr(
