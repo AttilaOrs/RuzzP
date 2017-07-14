@@ -40,7 +40,8 @@ impl Operator {
                     Operator::Plus => Some(fi_val +se_val),
                     Operator::Minus => Some(fi_val - se_val),
                     Operator::Mult => Some(fi_val *se_val),
-                    Operator::Div => Some( if se_val > EPS  { fi_val / se_val } else {fi_val / EPS} ),
+                    Operator::Div => Some(
+                        if se_val > EPS  { fi_val / se_val } else {fi_val / EPS} ),
                     Operator::NoOp => unreachable!(),
                 }
             }
@@ -169,6 +170,7 @@ impl ExecutableFuzzyTable for OneXOneTable {
 }
 
 
+#[derive(Debug)]
 pub struct  UnifiedOneXTwoTable {
     fuzzy_table : OneXTwoTable,
 }
@@ -275,6 +277,7 @@ impl ExecutableFuzzyTable for OneXTwoTable {
     }
 }
 
+#[derive( Debug)]
 pub struct UnifiedTwoXOneTable{
     fuzzy_table : TwoXOneTable,
     op : Operator,
@@ -441,6 +444,7 @@ impl ExecutableFuzzyTable for TwoXOneTable {
     }
 }
 
+#[derive( Debug)]
 pub struct UnifiedTwoXTwoTable{
     fuzzy_table : TwoXTwoTable,
     op : Operator,
