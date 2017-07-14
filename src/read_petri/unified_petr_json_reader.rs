@@ -377,7 +377,7 @@ mod tests {
     #[test]
     fn max_try_run(){
 
-        let ww = my_file_read("/home/ors/Desktop/rust_github/unified_nets/maxTableTryOut.json");
+        let ww = my_file_read("unified_nets/maxTableTryOut.json");
         let rez = deseralize(&ww);
         assert!(rez.is_ok());
 
