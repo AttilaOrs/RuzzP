@@ -1,0 +1,141 @@
+{
+  "scaleForPlace": [
+    1.6,
+    0.0,
+    -1.0
+  ],
+  "delayForTransition": [
+    0,
+    0
+  ],
+  "delayMulitiperForTransition": [
+    0.0,
+    0.0
+  ],
+  "tableForTransition": [
+    {
+      "unfiedType": "u1x1",
+      "unifiedData": {
+        "table": {
+          "valTable": {
+            "NL": "NL",
+            "NM": "NM",
+            "ZR": "ZR",
+            "PM": "PM",
+            "PL": "PL",
+            "FF": "FF"
+          }
+        }
+      }
+    },
+    {
+      "unfiedType": "u2x1",
+      "unifiedData": {
+        "table": {
+          "ruleTable": {
+            "NL": {
+              "NL": "NL",
+              "NM": "NM",
+              "ZR": "ZR",
+              "PM": "PM",
+              "PL": "PL",
+              "FF": "FF"
+            },
+            "NM": {
+              "NL": "NM",
+              "NM": "NM",
+              "ZR": "ZR",
+              "PM": "PM",
+              "PL": "PL",
+              "FF": "FF"
+            },
+            "ZR": {
+              "NL": "ZR",
+              "NM": "ZR",
+              "ZR": "ZR",
+              "PM": "PM",
+              "PL": "PL",
+              "FF": "FF"
+            },
+            "PM": {
+              "NL": "PM",
+              "NM": "PM",
+              "ZR": "PM",
+              "PM": "PM",
+              "PL": "PL",
+              "FF": "FF"
+            },
+            "PL": {
+              "NL": "PL",
+              "NM": "PL",
+              "ZR": "PL",
+              "PM": "PL",
+              "PL": "PL",
+              "FF": "FF"
+            },
+            "FF": {
+              "NL": "FF",
+              "NM": "FF",
+              "ZR": "FF",
+              "PM": "FF",
+              "PL": "FF",
+              "FF": "FF"
+            }
+          }
+        },
+        "op": "None"
+      }
+    }
+  ],
+  "fromTransToPlace": [
+    [],
+    [
+      2
+    ]
+  ],
+  "fromPlaceToTrans": [
+    [
+      1
+    ],
+    [
+      1
+    ],
+    [
+      0
+    ]
+  ],
+  "placesNeededForTrans": [
+    [
+      2
+    ],
+    [
+      0,
+      1
+    ]
+  ],
+  "initialMarkingOfThePlaces": [
+    {
+      "val": 12.78,
+      "isPhi": false
+    },
+    {
+      "val": null,
+      "isPhi": true
+    },
+    {
+      "val": null,
+      "isPhi": true
+    }
+  ],
+  "isInputPlaces": [
+    true,
+    true,
+    false
+  ],
+  "isOutputTransition": [
+    true,
+    false
+  ],
+  "transitionCntr": 2,
+  "placeCntr": 3
+}
