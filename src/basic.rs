@@ -50,11 +50,14 @@ impl UnifiedToken {
     pub fn from_option(o : Option<f32>) -> UnifiedToken {
         match o {
             None => UnifiedToken::Phi ,
-            Some(v) => UnifiedToken::Exist(v),
+            Some(v) => {
+                assert!(!v.is_nan());
+                UnifiedToken::Exist(v)},
         }
     }
 
     pub fn from_val(val : f32) -> UnifiedToken {
+        assert!(!val.is_nan());
         UnifiedToken::Exist(val)
     }
 
@@ -147,6 +150,13 @@ impl FuzzyToken {
             Phi => {},
             Exist(ref mut arr) => {
                 let sum = arr.iter().fold(0.0, |acc, &x| acc +x);
+                if sum.is_nan() {
+                    for i in 0..5 {
+                        arr[i] = 0.0;
+                    }
+                    arr[2] = 1.0;
+                    return
+                }
                 for x in arr.iter_mut() {
                     *x =(*x) / sum;
                 }
@@ -216,6 +226,7 @@ macro_rules! limits_of {
         $self_.limits[($fuzzy_val).index()]
                           )
 }
+const EPS: f32 = 0.00000000001;
 
 impl Fuzzyfier for TriangleFuzzyfier {
     fn fuzzyfy(&self, x: Option<f32>) -> FuzzyToken {
@@ -242,6 +253,7 @@ impl Fuzzyfier for TriangleFuzzyfier {
                             limits_of!(self, PL)[1], limits_of!(self, PL)[0], val);
                          ft.add_to_val(PL, rez);
                     }
+                ft.normailze();
                 ft
             }
         }
@@ -283,6 +295,13 @@ mod tests {
     use super::{FuzzyToken,  TriangleFuzzyfier, Fuzzyfier, Defuzzyfier, UnifiedToken} ;
     use super::FuzzyToken::*;
     use super::FuzzyValue::*;
+
+    #[test]
+    fn TriangleFuzzyfier_zero_scale_test(){
+        let ff = TriangleFuzzyfier::with_min_max(0.0*-1.0, 0.0);
+        let rez = ff.fuzzyfy(Option::Some(0.0));
+        assert_eq!(FuzzyToken::from_arr([0.0, 0.0, 1.0, 0.0, 0.0]), rez);
+    }
 
     #[test]
     fn zero_token_test() {

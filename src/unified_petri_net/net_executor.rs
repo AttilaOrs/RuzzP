@@ -86,6 +86,7 @@ impl<'a> BasicUnifiedPetriExecutor<'a> {
             }
         }
 
+
     }
 
     fn start_fire(&mut self, tr_id: usize, inp_tokens: Vec<UnifiedToken>) {

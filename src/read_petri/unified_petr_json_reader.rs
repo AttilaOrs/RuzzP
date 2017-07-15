@@ -62,6 +62,7 @@ static TBL_TRS: &'static str = "tableForTransition";
 static TBL_TYPE: &'static str = "unfiedType";
 static TBL_DATA: &'static str = "unifiedData";
 static DELAY: &'static str = "delayForTransition";
+static PLACES_NEED: &'static str = "placesNeededForTrans";
 
 static TABEL: &'static str = "table";
 static OPERATOR: &'static str = "op";
@@ -102,9 +103,9 @@ pub fn deseralize(what :&str)-> Result<UnifiedPetriNetBuilder>  {
      let tr_to_pl = mine_arcs(tr_to_pl_jsons, TR_TO_PL)?;
      assert_length!(tr_to_pl, tr_nr, TR_TO_PL);
 
-     let pl_to_tr_jsons  = mine!(obj, as_array, PL_TO_PL);
-     let pl_to_tr = mine_arcs(pl_to_tr_jsons, PL_TO_PL)?;
-     assert_length!(pl_to_tr, pl_nr, PL_TO_PL);
+     let pl_needed_jsons  = mine!(obj, as_array, PLACES_NEED);
+     let pl_needed = mine_arcs(pl_needed_jsons, PLACES_NEED)?;
+     assert_length!(pl_needed, tr_nr, PLACES_NEED);
 
      let scales_json = mine!(obj, as_array, SCALES);
      let scales = mine_scale(scales_json, SCALES)?;
@@ -144,13 +145,11 @@ pub fn deseralize(what :&str)-> Result<UnifiedPetriNetBuilder>  {
          }
      }
 
-
-     for pl_id in 0..pl_to_tr.len() {
-         for tr_id in &pl_to_tr[pl_id] {
-             bld.connect_place_with_transition(pl_id, * tr_id);
+     for tr_id in 0..pl_needed.len() {
+         for pl_id in &pl_needed[tr_id]{
+             bld.connect_place_with_transition(*pl_id, tr_id);
          }
      }
-
 
      Ok(bld)
 }
