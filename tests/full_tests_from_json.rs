@@ -110,14 +110,12 @@ fn lane() {
     assert_eq!(vec![(0, UnifiedToken::Exist(0.0))], current_hist);
     consumer_fact.clear_history();
 
-    println!(">>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<");
     let inp = vec![
         (1, UnifiedToken::from_val(10.0)),
     ];
     exec.run_tick(inp);
     let current_hist =consumer_fact.get_current_hist();
     assert!( current_hist.is_empty());
-    println!(">>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<");
 
     let inp = vec![
         (2, UnifiedToken::from_val(0.0)),
@@ -126,6 +124,20 @@ fn lane() {
     let current_hist =consumer_fact.get_current_hist();
     assert_eq!(vec![(0, UnifiedToken::Exist(10.0))], current_hist);
     consumer_fact.clear_history();
+
+    let inp = vec![
+        (0, UnifiedToken::from_val(5.0)),
+    ];
+    exec.run_tick(inp);
+    let current_hist =consumer_fact.get_current_hist();
+    assert!( current_hist.is_empty());
+
+    let inp = vec![
+        (2, UnifiedToken::from_val(0.0)),
+    ];
+    exec.run_tick(inp);
+    let current_hist =consumer_fact.get_current_hist();
+    assert_eq!(vec![(0, UnifiedToken::Exist(5.0))], current_hist);
 
 
 
@@ -164,142 +176,3 @@ fn max_finder() {
 
 }
 
-/*
-#[test]
-fn concurent_petri() {
-        let ww = my_file_read("inputs/ConcurentPetriNet.json");
-        let rez = deseralize(&ww).unwrap();
-        let (net, mut man) = rez.build();
-        let mut consumer_fact = ConsumerFactory::new();
-        consumer_fact.create_handler_for_all_outs(&net, &mut man, );
-
-        let mut exc =SynchronousFuzzyPetriExecutor::new(&net, man);
-
-        exc.run_tick(vec![]);
-        let rez = consumer_fact.get_current_hist();
-        assert_eq!(0, rez.len());
-
-        exc.run_tick(vec![(3, FuzzyToken::zero_token())]);
-        let rez = consumer_fact.get_current_hist();
-        assert_eq!(1, rez.len());
-        assert_eq!((2, FuzzyToken::Exist([0.0, 0.0, 1.0, 0.0, 0.0])), rez[0]);
-        consumer_fact.clear_history();
-}
-
-#[test]
-fn maximum_finder() {
-        let ww = my_file_read("inputs/MaximumFinder.json");
-        let rez = deseralize(&ww).unwrap();
-        let (net, mut man) = rez.build();
-        let mut consumer_fact = ConsumerFactory::new();
-        consumer_fact.create_handler_for_all_outs(&net, &mut man, );
-
-        let mut exc =SynchronousFuzzyPetriExecutor::new(&net, man);
-        let fuzz = TriangleFuzzyfier::default();
-
-        let inp = vec![
-            (0, fuzz.fuzzyfy(Some(-0.5))),
-            (1, fuzz.fuzzyfy(Some(0.0))),
-            (2, fuzz.fuzzyfy(Some(0.5))),
-        ];
-
-        exc.run_tick(inp);
-        let rez = consumer_fact.get_current_hist();
-        assert_eq!(1, rez.len());
-        assert_eq!((2, FuzzyToken::Exist([0.0, 0.0, 1.0, 0.0, 0.0])), rez[0]);
-        consumer_fact.clear_history();
-
-        let inp = vec![
-            (0, fuzz.fuzzyfy(Some(0.5))),
-            (1, fuzz.fuzzyfy(Some(0.0))),
-            (2, fuzz.fuzzyfy(Some(0.2))),
-        ];
-
-        exc.run_tick(inp);
-        let rez = consumer_fact.get_current_hist();
-        assert_eq!(1, rez.len());
-        assert_eq!((0, FuzzyToken::Exist([0.0, 0.0, 1.0, 0.0, 0.0])), rez[0]);
-        consumer_fact.clear_history();
-
-        let inp = vec![
-            (0, fuzz.fuzzyfy(Some(0.5))),
-            (1, fuzz.fuzzyfy(Some(1.0))),
-            (2, fuzz.fuzzyfy(Some(0.2))),
-        ];
-
-        exc.run_tick(inp);
-        let rez = consumer_fact.get_current_hist();
-        assert_eq!(1, rez.len());
-        assert_eq!((1, FuzzyToken::Exist([0.0, 0.0, 1.0, 0.0, 0.0])), rez[0]);
-        consumer_fact.clear_history();
-}
-
-#[test]
-fn comprator(){
-        let ww = my_file_read("inputs/Comparator.json");
-        let rez = deseralize(&ww).unwrap();
-        let (net, mut man) = rez.build();
-
-        let mut consumer_fact = ConsumerFactory::new();
-        consumer_fact.create_handler_for_all_outs(&net, &mut man, );
-
-        let mut exc =SynchronousFuzzyPetriExecutor::new(&net, man);
-        let fuzz = TriangleFuzzyfier::default();
-
-        let inp = vec![
-            (0, fuzz.fuzzyfy(Some(-0.5))),
-            (1, fuzz.fuzzyfy(Some(0.0))),
-        ];
-
-        exc.run_tick(inp);
-        let rez = consumer_fact.get_current_hist();
-        assert_eq!(1, rez.len());
-        assert_eq!((2, FuzzyToken::Exist([0.0, 0.0, 1.0, 0.0, 0.0])), rez[0]);
-        consumer_fact.clear_history();
-
-
-        let inp = vec![
-            (0, fuzz.fuzzyfy(Some(0.5))),
-            (1, fuzz.fuzzyfy(Some(0.0))),
-        ];
-        exc.run_tick(inp);
-        let rez = consumer_fact.get_current_hist();
-        assert_eq!(1, rez.len());
-        assert_eq!((3, FuzzyToken::Exist([0.0, 0.0, 1.0, 0.0, 0.0])), rez[0]);
-        consumer_fact.clear_history();
-}
-
-#[test]
-fn loop_petri(){
-        let ww = my_file_read("inputs/Loop.json");
-        let rez = deseralize(&ww).unwrap();
-        let (net, mut man) = rez.build();
-        println!("{:?}", net.typed_table_for_trans(2));
-
-        let mut consumer_fact = ConsumerFactory::new();
-        consumer_fact.create_handler_for_all_outs(&net, &mut man, );
-
-        let mut exc =SynchronousFuzzyPetriExecutor::new(&net, man);
-        let fuzz = TriangleFuzzyfier::default();
-
-        let inp = vec![
-            (0, fuzz.fuzzyfy(Some(-0.25))),
-        ];
-        exc.run_tick(inp);
-        let rez = consumer_fact.get_current_hist();
-        assert_eq!(1, rez.len());
-        assert_eq!((0, FuzzyToken::Exist([0.00,1.00,0.00,0.00,0.00])), rez[0]);
-        consumer_fact.clear_history();
-
-        let inp = vec![
-            (0, fuzz.fuzzyfy(Some(0.78))),
-        ];
-        exc.run_tick(inp);
-        let rez = consumer_fact.get_current_hist();
-        assert_eq!(1, rez.len());
-        assert_eq!((0, FuzzyToken::Exist([0.0, 0.0, 0.32000017, 0.6799998, 0.0])), rez[0]);
-        consumer_fact.clear_history();
-
-
-}
-*/
