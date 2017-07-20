@@ -1,4 +1,5 @@
 use std::fmt;
+use std::iter;
 
 
 use basic::*;
@@ -72,6 +73,7 @@ impl TableValue {
 pub trait ExecutableFuzzyTable {
     fn is_executable(&self, inps: &Vec<FuzzyToken> ) -> bool;
     fn execute(&self, inps: Vec<FuzzyToken> ) -> Vec<FuzzyToken>;
+    fn possibly_executable(&self, inps: &Vec<bool> ) -> bool;
 }
 
 pub trait ExecutableUnifiedTable {
@@ -167,6 +169,15 @@ impl ExecutableFuzzyTable for OneXOneTable {
         }
         vec![to_ret]
     }
+
+    fn possibly_executable(&self, inps: &Vec<bool> ) -> bool{
+        if inps[0] {
+            (0..5).any(|x| self.values[x] != Phi)
+        } else {
+            self.values[5] != Phi
+        }
+    }
+
 }
 
 
@@ -274,6 +285,14 @@ impl ExecutableFuzzyTable for OneXTwoTable {
             }
         }
         vec![to_ret_f, to_ret_s]
+    }
+
+    fn possibly_executable(&self, inps: &Vec<bool> ) -> bool{
+        if inps[0] {
+            (0..10).any(|x| self.values[x] != Phi)
+        } else {
+            oxt_get_f!(self,Phi) != Phi || oxt_get_s!(self, Phi) != Phi
+        }
     }
 }
 
@@ -441,6 +460,25 @@ impl ExecutableFuzzyTable for TwoXOneTable {
              }
              vec![to_ret]
 
+    }
+
+    fn possibly_executable(&self, inps: &Vec<bool> ) -> bool{
+        for fi in index_for(inps[0]) {
+            for se in index_for(inps[1]) {
+                if txo_get!(self,fi,se) != Phi {
+                    return true
+                }
+            }
+        }
+        false
+    }
+}
+
+fn index_for(i : bool) -> Vec<TableValue> {
+    if i {
+        FuzzyValue::iter().map(|x| E(*x)).collect()
+    } else {
+        vec![Phi]
     }
 }
 
@@ -637,6 +675,17 @@ macro_rules! txt_get_s {
          vec![to_ret_f,to_ret_s]
      }
 
+    fn possibly_executable(&self, inps: &Vec<bool> ) -> bool{
+        for fi in index_for(inps[0]) {
+            for se in index_for(inps[1]) {
+                if (txt_get_f!(self,fi, se) != Phi) || (txt_get_s!(self, fi,se) != Phi)
+                {
+                    return true
+                }
+            }
+        }
+        false
+    }
  }
 
 
@@ -662,6 +711,7 @@ mod tests {
             UnifiedToken::from_val($v)
                      )
     }
+
     #[test]
     fn OneXOneTable_is_executable_test() {
         let table = OneXOneTable::default_table();
@@ -672,6 +722,23 @@ mod tests {
         assert!(table.is_executable(&vec![FuzzyToken::zero_token()]));
         assert!(table.is_executable(&vec![FuzzyToken::Phi]));
         assert!(! table.is_executable( &vec![t!(1.0, 0.0, 0.0, 0.0, 0.0)]));
+    }
+
+
+    #[test]
+    fn OneXOneTable_possibly_executable() {
+        let table = OneXOneTable::default_table();
+        assert!(table.possibly_executable( &vec![true]));
+        assert!(! table.possibly_executable(&vec![false]));
+
+        let table = OneXOneTable::from_arr([Phi, Phi, E(NL), Phi, Phi, E(PM)]);
+        assert!(table.possibly_executable(&vec![true]));
+        assert!( table.possibly_executable(&vec![false]));
+
+        let table = OneXOneTable::from_arr([Phi, Phi, Phi, Phi, Phi, E(PM)]);
+        assert!(! table.possibly_executable(&vec![true]));
+        assert!( table.possibly_executable(&vec![false]));
+
     }
 
     #[test]
@@ -796,6 +863,36 @@ mod tests {
         assert_eq!(rez,  vec![t!(0.0, 0.0, 0.0, 0.5, 0.5), t!(0.5, 0.5, 0.0, 0.0, 0.0)]);
 
     }
+
+    fn OneXTwo_possible_executable(){
+        let table = OneXTwoTable::default_table();
+        assert!(table.possibly_executable(&vec![true]));
+        assert!(! table.possibly_executable(&vec![false]));
+
+        let table = OneXTwoTable::from_arr(
+            [E(PL), E(NM),
+             E(PM), E(NL),
+              Phi,  Phi,
+             E(PM), E(NM),
+             E(PL), E(NL),
+             Phi,  E(ZR) ]);
+
+        assert!(table.possibly_executable(&vec![true]));
+        assert!( table.possibly_executable(&vec![false]));
+
+        let table = OneXTwoTable::from_arr(
+            [Phi, Phi,
+             Phi, Phi,
+             Phi, Phi,
+             Phi, Phi,
+             Phi, Phi,
+             Phi, Phi ]);
+
+        assert!(!table.possibly_executable(&vec![true]));
+        assert!(! table.possibly_executable(&vec![false]));
+    }
+
+
     #[test]
     fn UnifiedOneXTwoTable_execute_test() {
         let table = UnifiedOneXTwoTable::from_arr(
@@ -822,7 +919,8 @@ mod tests {
     fn UnifiedTwoXOneTable_executable_test(){
         let default_fuzzifier =TriangleFuzzyfier::with_min_max(-1.0,1.0);
         let table = UnifiedTwoXOneTable::default_table();
-        assert!(table.is_executable(&vec![UnifiedToken::zero_token(), UnifiedToken::zero_token()],
+        assert!(table.is_executable(&vec![UnifiedToken::zero_token(),
+                                    UnifiedToken::zero_token()],
             &vec![ &default_fuzzifier, &default_fuzzifier]));
         assert!(! table.is_executable(&vec![UnifiedToken::Phi,UnifiedToken::zero_token()],
             &vec![ &default_fuzzifier, &default_fuzzifier]));
@@ -860,7 +958,8 @@ mod tests {
         assert!(!table.is_executable(&vec![FuzzyToken::Phi, FuzzyToken::Phi]));
         assert!(!table.is_executable(&vec![FuzzyToken::Phi, t!(0.0, 0.0, 1.0, 0.0, 0.0) ]));
         assert!(!table.is_executable(&vec![t!(0.0, 0.0, 1.0, 0.0, 0.0), FuzzyToken::Phi]));
-        assert!(table.is_executable(&vec![t!(0.0, 0.0, 1.0, 0.0, 0.0), t!(1.0, 0.0, 0.0, 0.0, 0.0)]));
+        assert!(table.is_executable(&vec![t!(0.0, 0.0, 1.0, 0.0, 0.0),
+                                    t!(1.0, 0.0, 0.0, 0.0, 0.0)]));
     }
 
 
@@ -878,9 +977,48 @@ mod tests {
         assert!(table.is_executable(&vec![ t!(0.0, 0.0, 1.0, 0.0, 0.0),FuzzyToken::Phi ]));
         assert!(!table.is_executable(&vec![ FuzzyToken::Phi, t!(0.0, 0.0, 1.0, 0.0, 0.0)]));
         assert!(table.is_executable(&vec![FuzzyToken::Phi,t!(0.0, 1.0, 0.0, 0.0, 0.0)]));
-        assert!(!table.is_executable(&vec![t!(0.0, 0.0, 1.0, 0.0, 0.0), t!(0.0, 0.0, 1.0, 0.0, 0.0)]));
-        assert!(table.is_executable(&vec![t!(1.0, 0.0, 1.0, 0.0, 0.0), t!(1.0, 0.0, 1.0, 0.0, 0.0)]));
-        assert!(table.is_executable(&vec![t!(0.0, 0.0, 1.0, 1.0, 0.0), t!(0.0, 0.0, 1.0, 0.0, 1.0)]));
+        assert!(!table.is_executable(&vec![t!(0.0, 0.0, 1.0, 0.0, 0.0),
+                                     t!(0.0, 0.0, 1.0, 0.0, 0.0)]));
+        assert!(table.is_executable(&vec![t!(1.0, 0.0, 1.0, 0.0, 0.0),
+                                    t!(1.0, 0.0, 1.0, 0.0, 0.0)]));
+        assert!(table.is_executable(&vec![t!(0.0, 0.0, 1.0, 1.0, 0.0),
+                                    t!(0.0, 0.0, 1.0, 0.0, 1.0)]));
+    }
+
+    #[test]
+    fn TwoXOneTable_possibly_executable(){
+        let table = TwoXOneTable::default_table();
+        assert!(table.possibly_executable(&vec![true, true]));
+        assert!(!table.possibly_executable(&vec![false, true]));
+        assert!(!table.possibly_executable(&vec![true, false]));
+        assert!(!table.possibly_executable(&vec![false, false]));
+
+        let table = TwoXOneTable::from_arr(
+            [E(PL), E(PL), E(NM), E(NM), Phi  ,  Phi,
+             E(PL), E(NM), E(NM), Phi  , E(PM),  Phi,
+             E(NM), E(NM), Phi  , E(PM), E(PM), E(ZR),
+             E(NM), Phi  , E(PM), E(PM), E(NM),  Phi,
+             Phi  , E(PM), E(PM), E(NM), E(NM),  Phi,
+             Phi,   Phi  , Phi,   Phi,   Phi,    E(PL), ]);
+
+        assert!(table.possibly_executable(&vec![true, true]));
+        assert!(!table.possibly_executable(&vec![false, true]));
+        assert!(table.possibly_executable(&vec![true, false]));
+        assert!(table.possibly_executable(&vec![false, false]));
+
+        let table = TwoXOneTable::from_arr(
+            [Phi,Phi,Phi,Phi,Phi,Phi,
+             Phi,Phi,Phi,Phi,Phi,Phi,
+             Phi,Phi,Phi,Phi,Phi,Phi,
+             Phi,Phi,Phi,Phi,Phi,Phi,
+             Phi,Phi,Phi,Phi,Phi,Phi,
+           E(NM),Phi,Phi,Phi,Phi, Phi, ]);
+
+
+        assert!(!table.possibly_executable(&vec![true, true]));
+        assert!(table.possibly_executable(&vec![false, true]));
+        assert!(!table.possibly_executable(&vec![true, false]));
+        assert!(!table.possibly_executable(&vec![false, false]));
     }
 
     #[test]
@@ -896,9 +1034,11 @@ mod tests {
         let rez = table.execute(vec![FuzzyToken::zero_token(),FuzzyToken::Phi]);
         assert_eq!(rez, vec![FuzzyToken::Phi]);
 
-        let rez = table.execute(vec![t!(0.0, 0.0, 1.0, 0.0, 0.0), t!(0.0, 1.0, 0.0, 0.0 , 0.0) ]);
+        let rez = table.execute(vec![t!(0.0, 0.0, 1.0, 0.0, 0.0),
+                                t!(0.0, 1.0, 0.0, 0.0 , 0.0) ]);
         assert_eq!(rez, vec![t!(0.0, 1.0, 0.0, 0.0, 0.0)]);
-        let rez = table.execute(vec![t!(0.0, 0.5, 0.5, 0.0, 0.0), t!(0.5, 0.5, 0.0, 0.0 , 0.0) ]);
+        let rez = table.execute(vec![t!(0.0, 0.5, 0.5, 0.0, 0.0),
+                                t!(0.5, 0.5, 0.0, 0.0 , 0.0) ]);
         assert_eq!(rez, vec![t!(0.25, 0.75, 0.0, 0.0, 0.0)]);
     }
 
@@ -938,18 +1078,34 @@ mod tests {
         assert!(! table.is_executable(&vec![FuzzyToken::Phi, FuzzyToken::Phi]));
         assert!(! table.is_executable(&vec![FuzzyToken::zero_token(), FuzzyToken::Phi]));
         assert!(! table.is_executable(&vec![FuzzyToken::Phi, FuzzyToken::zero_token()]));
-        assert!( table.is_executable(&vec![FuzzyToken::zero_token(), FuzzyToken::zero_token()]));
+        assert!( table.is_executable(&vec![FuzzyToken::zero_token(),
+                                     FuzzyToken::zero_token()]));
+    }
+    #[test]
+    fn TwoXTwoTable_is_executable_simple_table(){
+    let table = TwoXTwoTable::from_arr(
+        [Phi  , Phi  , Phi  , Phi  , Phi  , Phi  , Phi  , Phi  , Phi  , Phi  ,  Phi,  Phi,
+         Phi  , Phi  , Phi  , Phi  , Phi  , Phi  , Phi  , Phi  , Phi  , Phi  ,  Phi  ,Phi,
+         Phi  , Phi  , Phi  , Phi  , Phi  , Phi  , Phi  , Phi  , Phi  , Phi  ,  Phi,  Phi  ,
+         Phi  , Phi  , Phi  , Phi  , Phi  , Phi  , Phi  , Phi  , Phi  , Phi  ,  Phi,  Phi,
+         Phi  , Phi  , Phi  , Phi  , Phi  , Phi  , Phi  , Phi  , Phi  , Phi  ,  Phi,  Phi,
+         Phi,   Phi,   Phi,   Phi,   Phi,   Phi,   Phi,   Phi  , Phi  , Phi  ,  Phi  ,E(PL),]);
+        assert!( table.is_executable(&vec![FuzzyToken::Phi, FuzzyToken::Phi]));
+        assert!(! table.is_executable(&vec![FuzzyToken::zero_token(), FuzzyToken::Phi]));
+        assert!(! table.is_executable(&vec![FuzzyToken::Phi, FuzzyToken::zero_token()]));
+        assert!(! table.is_executable(&vec![FuzzyToken::zero_token(),
+                                     FuzzyToken::zero_token()]));
     }
 
     #[test]
     fn TwoXTwoTable_is_executable_interseting_table(){
-        let table = TwoXTwoTable::from_arr(
-            [E(NL), E(NL), E(NL), E(NL), E(NM), E(NM), E(NM), E(NM), Phi  , Phi  ,  Phi,  Phi,
-             E(NL), E(NL), E(NM), E(NM), E(NM), E(NM), Phi  , Phi  , E(PM), E(PM),  E(PL),Phi,
-             E(NM), E(NM), E(NM), E(NM), Phi  , Phi  , E(PM), E(PM), E(PM), E(PM),  Phi,  E(NM),
-             E(NM), E(NM), Phi  , Phi  , E(PM), E(PM), E(PM), E(PM), E(PL), E(PL),  Phi,  Phi,
-             Phi  , Phi  , E(PM), E(PM), E(PM), E(PM), E(PL), E(PL), E(PL), E(PL),  Phi,  Phi,
-             Phi,   Phi,   Phi,   Phi,   Phi,   Phi,   Phi,   E(NM), E(PM),   Phi,   E(NM), Phi,]);
+    let table = TwoXTwoTable::from_arr(
+        [E(NL), E(NL), E(NL), E(NL), E(NM), E(NM), E(NM), E(NM), Phi  , Phi  ,  Phi,  Phi,
+         E(NL), E(NL), E(NM), E(NM), E(NM), E(NM), Phi  , Phi  , E(PM), E(PM),  E(PL),Phi,
+         E(NM), E(NM), E(NM), E(NM), Phi  , Phi  , E(PM), E(PM), E(PM), E(PM),  Phi,  E(NM),
+         E(NM), E(NM), Phi  , Phi  , E(PM), E(PM), E(PM), E(PM), E(PL), E(PL),  Phi,  Phi,
+         Phi  , Phi  , E(PM), E(PM), E(PM), E(PM), E(PL), E(PL), E(PL), E(PL),  Phi,  Phi,
+         Phi,   Phi,   Phi,   Phi,   Phi,   Phi,   Phi,   E(NM), E(PM),   Phi,   E(NM), Phi,]);
 
         assert!(table.is_executable(&vec![FuzzyToken::Phi, FuzzyToken::Phi]));
         assert!(table.is_executable(&vec![t!(0.0, 1.0, 0.0, 0.0, 0.0), FuzzyToken::Phi]));
@@ -958,8 +1114,20 @@ mod tests {
 
         assert!(table.is_executable(&vec![FuzzyToken::Phi,t!(0.0, 0.0, 0.0, 1.0, 0.0)]));
         assert!(table.is_executable(&vec![FuzzyToken::Phi,t!(0.0, 0.0, 0.0, 0.0, 1.0)]));
-        assert!(!table.is_executable(&vec![t!(0.0, 0.0, 1.0, 0.0, 0.0), t!(0.0, 0.0, 1.0, 0.0, 0.0)]));
-        assert!(table.is_executable(&vec![t!(0.0, 0.0, 0.0, 1.0, 0.0), t!(0.0, 0.0, 1.0, 0.0, 0.0)]));
+        assert!(!table.is_executable(&vec![t!(0.0, 0.0, 1.0, 0.0, 0.0),
+                                     t!(0.0, 0.0, 1.0, 0.0, 0.0)]));
+        assert!(table.is_executable(&vec![t!(0.0, 0.0, 0.0, 1.0, 0.0),
+                                    t!(0.0, 0.0, 1.0, 0.0, 0.0)]));
+    }
+
+    #[test]
+    fn TwoXTwoTable_possibly_executable(){
+        let table = TwoXTwoTable::default_table();
+        assert!(table.possibly_executable(&vec![true, true]));
+        assert!(!table.possibly_executable(&vec![false, true]));
+        assert!(!table.possibly_executable(&vec![true, false]));
+        assert!(!table.possibly_executable(&vec![false, false]));
+
     }
 
     #[test]
@@ -969,21 +1137,23 @@ mod tests {
         let rez = table.execute(vec![FuzzyToken::Phi, FuzzyToken::Phi]);
         assert_eq!(rez, vec![FuzzyToken::Phi, FuzzyToken::Phi]);
 
-        let rez = table.execute(vec![t!(0.0, 0.0, 1.0, 0.0, 0.0), t!(0.0, 1.0, 0.0, 0.0 , 0.0) ]);
-        assert_eq!(rez, vec![t!(0.0, 1.0, 0.0, 0.0, 0.0),t!(0.0, 1.0, 0.0, 0.0, 0.0)]);
-        let rez = table.execute(vec![t!(0.0, 0.5, 0.5, 0.0, 0.0), t!(0.5, 0.5, 0.0, 0.0 , 0.0) ]);
+        let rez = table.execute(vec![t!(0.0, 0.0, 1.0, 0.0, 0.0),
+                                t!(0.0, 1.0, 0.0, 0.0 , 0.0) ]);
+        assert_eq!(rez, vec![t!(0.0, 1.0, 0.0, 0.0, 0.0), t!(0.0, 1.0, 0.0, 0.0, 0.0)]);
+        let rez = table.execute(vec![t!(0.0, 0.5, 0.5, 0.0, 0.0),
+                                t!(0.5, 0.5, 0.0, 0.0 , 0.0) ]);
         assert_eq!(rez, vec![t!(0.25, 0.75, 0.0, 0.0, 0.0), t!(0.25, 0.75, 0.0, 0.0, 0.0)]);
     }
 
     #[test]
     fn TwoXTwoTable_execute_interseting_table(){
-        let table = TwoXTwoTable::from_arr(
-            [E(NL), E(NL), E(NL), E(NL), E(PL), E(PL), E(PL), E(PL), Phi  , Phi  ,  Phi,  Phi,
-             E(NL), E(NL), E(PL), E(PL), E(PL), E(PL), Phi  , Phi  , E(PM), E(PM),  E(PL),Phi,
-             E(PL), E(PL), E(PL), E(PL), Phi  , Phi  , E(PM), E(PM), E(PM), E(PM),  Phi,  E(PL),
-             E(PL), E(PL), Phi  , Phi  , E(PM), E(PM), E(PM), E(PM), E(PL), E(PL),  Phi,  Phi,
-             Phi  , Phi  , E(PM), E(PM), E(PM), E(PM), E(PL), E(PL), E(PL), E(PL),  Phi,  Phi,
-             Phi,   Phi,   Phi,   Phi,   Phi,   Phi,   Phi,   E(PL), E(PM),   Phi,   E(PL), Phi,]);
+    let table = TwoXTwoTable::from_arr(
+        [E(NL), E(NL), E(NL), E(NL), E(PL), E(PL), E(PL), E(PL), Phi  , Phi  ,  Phi,  Phi,
+         E(NL), E(NL), E(PL), E(PL), E(PL), E(PL), Phi  , Phi  , E(PM), E(PM),  E(PL),Phi,
+         E(PL), E(PL), E(PL), E(PL), Phi  , Phi  , E(PM), E(PM), E(PM), E(PM),  Phi,  E(PL),
+         E(PL), E(PL), Phi  , Phi  , E(PM), E(PM), E(PM), E(PM), E(PL), E(PL),  Phi,  Phi,
+         Phi  , Phi  , E(PM), E(PM), E(PM), E(PM), E(PL), E(PL), E(PL), E(PL),  Phi,  Phi,
+         Phi,   Phi,   Phi,   Phi,   Phi,   Phi,   Phi,   E(PL), E(PM),   Phi,   E(PL), Phi,]);
 
         let rez = table.execute(vec![FuzzyToken::Phi, FuzzyToken::Phi]);
         assert_eq!(rez, vec![t!(0.0, 0.0, 0.0, 0.0, 1.0), FuzzyToken::Phi]);
@@ -1000,7 +1170,8 @@ mod tests {
         let rez = table.execute(vec![FuzzyToken::Phi, t!(0.0, 0.0, 0.0, 1.0, 0.0)]);
         assert_eq!(rez, vec![FuzzyToken::Phi,t!(0.0, 0.0, 0.0, 0.0, 1.0)]);
 
-        let rez = table.execute(vec![t!(0.6, 0.4, 0.0, 0.0, 0.0), t!(0.0, 0.3, 0.0, 0.7, 0.0)]);
+        let rez = table.execute(vec![t!(0.6, 0.4, 0.0, 0.0, 0.0),
+                                t!(0.0, 0.3, 0.0, 0.7, 0.0)]);
         assert_eq!(rez, vec![t!(0.25, 0.0, 0.0, 0.0, 0.75), t!(0.25, 0.0, 0.0, 0.0, 0.75)]);
     }
 
@@ -1017,13 +1188,13 @@ mod tests {
         assert!(!default_table.is_executable(&vec![UnifiedToken::Phi, ut!(0.0)],
             &vec![&default_fuzzyfier, &default_fuzzyfier]));
 
-        let intersing_table = UnifiedTwoXTwoTable::from_arr(
-            [E(NL), E(NL), E(NL), E(NL), E(NM), E(NM), E(NM), E(NM), Phi  , Phi  ,  Phi,  Phi,
-             E(NL), E(NL), E(NM), E(NM), E(NM), E(NM), Phi  , Phi  , E(PM), E(PM),  E(PL),Phi,
-             E(NM), E(NM), E(NM), E(NM), Phi  , Phi  , E(PM), E(PM), E(PM), E(PM),  Phi,  E(NM),
-             E(NM), E(NM), Phi  , Phi  , E(PM), E(PM), E(PM), E(PM), E(PL), E(PL),  Phi,  Phi,
-             Phi  , Phi  , E(PM), E(PM), E(PM), E(PM), E(PL), E(PL), E(PL), E(PL),  Phi,  Phi,
-             Phi,   Phi,   Phi,   Phi,   Phi,   Phi,   Phi,   E(NM), E(PM),   Phi,   E(NM), Phi,],
+    let intersing_table = UnifiedTwoXTwoTable::from_arr(
+        [E(NL), E(NL), E(NL), E(NL), E(NM), E(NM), E(NM), E(NM), Phi  , Phi  ,  Phi,  Phi,
+         E(NL), E(NL), E(NM), E(NM), E(NM), E(NM), Phi  , Phi  , E(PM), E(PM),  E(PL),Phi,
+         E(NM), E(NM), E(NM), E(NM), Phi  , Phi  , E(PM), E(PM), E(PM), E(PM),  Phi,  E(NM),
+         E(NM), E(NM), Phi  , Phi  , E(PM), E(PM), E(PM), E(PM), E(PL), E(PL),  Phi,  Phi,
+         Phi  , Phi  , E(PM), E(PM), E(PM), E(PM), E(PL), E(PL), E(PL), E(PL),  Phi,  Phi,
+         Phi,   Phi,   Phi,   Phi,   Phi,   Phi,   Phi,   E(NM), E(PM),   Phi,   E(NM), Phi,],
              Operator::Mult);
 
         assert!(!intersing_table.is_executable(&vec![ut!(-10.0), ut!(2.0)],
@@ -1050,13 +1221,13 @@ mod tests {
                                       &vec![&medium_fuzzyfier, &bigger_fuzzyfier]);
         assert_eq!(rez, vec![ut!(5.0), ut!(10.0)]);
 
-        let t = TwoXTwoTable{ values :
-            [  Phi, E(ZR), E(PL), E(PL), E(PL), E(PL), E(PL), E(PL), E(ZR),   E(PL),  Phi,  Phi,
-             E(PL), E(PL), E(PL), E(PL), E(PL), E(PL), E(PL), E(PL), E(PL), E(PL),  Phi,  Phi,
-             E(PL), E(PL), E(PL), E(PL), E(PL), E(PL), E(PL), E(PL), E(PL), E(PL),  Phi,  Phi,
-             E(PL), E(PL), E(PL), E(PL), E(PL), E(PL), E(PL), E(PL), E(PL), E(PL),  Phi,  Phi,
-             E(PL), E(PL), E(PL), E(PL), E(PL), E(PL), E(PL), E(PL), E(PL), E(PL),  Phi,  Phi,
-             Phi,   Phi,   Phi,   Phi,   Phi,    Phi, Phi,   Phi,   Phi,   Phi,   Phi,    Phi, ]};
+    let t = TwoXTwoTable{ values :
+        [  Phi, E(ZR), E(PL), E(PL), E(PL), E(PL), E(PL), E(PL), E(ZR),   E(PL),  Phi,  Phi,
+         E(PL), E(PL), E(PL), E(PL), E(PL), E(PL), E(PL), E(PL), E(PL), E(PL),  Phi,  Phi,
+         E(PL), E(PL), E(PL), E(PL), E(PL), E(PL), E(PL), E(PL), E(PL), E(PL),  Phi,  Phi,
+         E(PL), E(PL), E(PL), E(PL), E(PL), E(PL), E(PL), E(PL), E(PL), E(PL),  Phi,  Phi,
+         E(PL), E(PL), E(PL), E(PL), E(PL), E(PL), E(PL), E(PL), E(PL), E(PL),  Phi,  Phi,
+         Phi,   Phi,   Phi,   Phi,   Phi,    Phi, Phi,   Phi,   Phi,   Phi,   Phi,    Phi, ]};
         let second_table = UnifiedTwoXTwoTable{fuzzy_table : t, op: Operator::Plus};
 
         let rez = second_table.execute(vec![ut!(-10.0), ut!(2.0)],
