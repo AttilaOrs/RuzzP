@@ -79,6 +79,7 @@ pub trait ExecutableFuzzyTable {
 pub trait ExecutableUnifiedTable {
     fn is_executable(&self, inps: &Vec<UnifiedToken>, fuz: &Vec<&Fuzzyfier>) -> bool;
     fn execute(&self, inps: Vec<UnifiedToken>,fuz: &Vec<&Fuzzyfier>, defuz: &Vec<&Defuzzyfier> ) -> Vec<UnifiedToken>;
+    fn possibly_executable(&self, inps: &Vec<bool> ) -> bool;
 }
 
 #[derive(Debug)]
@@ -107,6 +108,9 @@ impl ExecutableUnifiedTable for UnifiedOneXOneTable {
         let mut fuzzy_out = self.fuzzy_table.execute(vec![ft]);
         let option = defuz[0].defuzzyfy(fuzzy_out.pop().expect("Impossible"));
         vec![UnifiedToken::from_option(option)]
+    }
+    fn possibly_executable(&self, inps: &Vec<bool> ) -> bool {
+        self.fuzzy_table.possibly_executable(inps)
     }
 }
 
@@ -208,6 +212,9 @@ impl ExecutableUnifiedTable for UnifiedOneXTwoTable {
         let option_two = defuz[1].defuzzyfy(fuzzy_out.pop().expect("Impossible"));
         let option_one = defuz[0].defuzzyfy(fuzzy_out.pop().expect("Impossible"));
         vec![UnifiedToken::from_option(option_one), UnifiedToken::from_option(option_two)]
+    }
+    fn possibly_executable(&self, inps: &Vec<bool> ) -> bool {
+        self.fuzzy_table.possibly_executable(inps)
     }
 }
 
@@ -352,6 +359,9 @@ impl ExecutableUnifiedTable for UnifiedTwoXOneTable {
            vec![UnifiedToken::from_val( defuz[0].limit( r ))]
 
        }
+    }
+    fn possibly_executable(&self, inps: &Vec<bool> ) -> bool {
+        self.fuzzy_table.possibly_executable(inps)
     }
 }
 
@@ -546,6 +556,9 @@ impl ExecutableUnifiedTable for UnifiedTwoXTwoTable {
                UnifiedToken::from_option(second)]
 
        }
+    }
+    fn possibly_executable(&self, inps: &Vec<bool> ) -> bool {
+        self.fuzzy_table.possibly_executable(inps)
     }
 }
 
