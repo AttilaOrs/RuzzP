@@ -1,9 +1,16 @@
 
+extern crate fnv;
+
 use tables::*;
 use basic::*;
 use unified_petri_net::net_builder::{UnifiedPetriNet, EventManager};
 use std::mem;
 use std::collections::HashMap;
+use self::fnv::FnvHasher;
+use std::hash::BuildHasherDefault;
+
+
+type MyHasher = BuildHasherDefault<FnvHasher>;
 
 struct BasicUnifiedPetriExecutor<'a> {
     net: &'a UnifiedPetriNet,
@@ -13,7 +20,7 @@ struct BasicUnifiedPetriExecutor<'a> {
     trans_holds: Vec<Vec<UnifiedToken>>,
     trans_order: Vec<usize>,
     scales : Vec<TriangleFuzzyfier>,
-    cached_possibly_exec : HashMap<Vec<bool>, Vec<usize>>,
+    cached_possibly_exec : HashMap<Vec<bool>, Vec<usize>,MyHasher>,
 }
 
 impl<'a> BasicUnifiedPetriExecutor<'a> {
@@ -27,7 +34,7 @@ impl<'a> BasicUnifiedPetriExecutor<'a> {
             trans_holds: vec![vec![]; net.get_trans_nr()],
             trans_order: order_of_transitions(net),
             scales :init_scales(net),
-            cached_possibly_exec: HashMap::new(),
+            cached_possibly_exec: HashMap::default(),
         }
     }
 
@@ -56,7 +63,8 @@ impl<'a> BasicUnifiedPetriExecutor<'a> {
         while heappened_something && loop_cntr < max_loop {
             heappened_something = false;
             loop_cntr += 1;
-            for tr_id in self.get_possible_executable_trans(){
+            let pos ={self.get_possible_executable_trans()};
+            for tr_id in pos{
                 match self.is_fireable(tr_id){
                     None => {/*does notin*/},
                     Some(inps) => {
@@ -160,16 +168,20 @@ impl<'a> BasicUnifiedPetriExecutor<'a> {
         to_ret
     }
     fn get_possible_executable_trans(&mut self) -> Vec<usize>{
-        let simpl_marking = self.simplyfied_marking();
+        let sm = self.simplyfied_marking();
+        if !self.cached_possibly_exec.contains_key(&sm) {
+            let v = self.possibly_executable_trans(&sm);
+            self.cached_possibly_exec.insert(sm.clone(), v);
+        }
+        return self.cached_possibly_exec.get(&sm).unwrap().clone()
 
-        self.possibly_executable_trans(simpl_marking)
     }
 
     fn simplyfied_marking(&self) -> Vec<bool>{
         self.place_state.iter().map(|x| x.not_phi()).collect()
     }
 
-    fn possibly_executable_trans(&self, simpl_mark : Vec<bool>) -> Vec<usize> {
+    fn possibly_executable_trans(&self, simpl_mark : &Vec<bool>) -> Vec<usize> {
         self.trans_order.iter()
             .map(|x|  (x,self.net.get_places_befor_trans(*x).iter().map(|pl| simpl_mark[*pl]).collect::<Vec<bool>>()))
             .filter(|&(ref tr_nr, ref inp)| self.net.table_for_trans(**tr_nr).possibly_executable(&inp))

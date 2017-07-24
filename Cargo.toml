@@ -6,3 +6,4 @@ authors = ["AttilaOrs <kilyen.attila.ors@gmail.com>"]
 [dependencies]
 rustc-serialize = "0.3"
 time = "0.1"
+fnv = "1.0.5"
