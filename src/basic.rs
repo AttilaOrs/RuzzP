@@ -79,6 +79,13 @@ impl UnifiedToken {
             },
         }
     }
+
+    pub fn not_phi(&self) ->bool {
+        match *self {
+            UnifiedToken::Phi => false,
+            UnifiedToken::Exist(_) => true,
+        }
+    }
 }
 
 impl FuzzyToken {

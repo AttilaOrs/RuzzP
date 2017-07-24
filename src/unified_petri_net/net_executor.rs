@@ -3,6 +3,7 @@ use tables::*;
 use basic::*;
 use unified_petri_net::net_builder::{UnifiedPetriNet, EventManager};
 use std::mem;
+use std::collections::HashMap;
 
 struct BasicUnifiedPetriExecutor<'a> {
     net: &'a UnifiedPetriNet,
@@ -12,6 +13,7 @@ struct BasicUnifiedPetriExecutor<'a> {
     trans_holds: Vec<Vec<UnifiedToken>>,
     trans_order: Vec<usize>,
     scales : Vec<TriangleFuzzyfier>,
+    cached_possibly_exec : HashMap<Vec<bool>, Vec<usize>>,
 }
 
 impl<'a> BasicUnifiedPetriExecutor<'a> {
@@ -25,6 +27,7 @@ impl<'a> BasicUnifiedPetriExecutor<'a> {
             trans_holds: vec![vec![]; net.get_trans_nr()],
             trans_order: order_of_transitions(net),
             scales :init_scales(net),
+            cached_possibly_exec: HashMap::new(),
         }
     }
 
@@ -53,8 +56,7 @@ impl<'a> BasicUnifiedPetriExecutor<'a> {
         while heappened_something && loop_cntr < max_loop {
             heappened_something = false;
             loop_cntr += 1;
-            for index in 0.. self.trans_order.len(){
-                let tr_id = self.trans_order[index];
+            for tr_id in self.get_possible_executable_trans(){
                 match self.is_fireable(tr_id){
                     None => {/*does notin*/},
                     Some(inps) => {
@@ -105,7 +107,6 @@ impl<'a> BasicUnifiedPetriExecutor<'a> {
         } else {
             self.trans_state[tr_id] = delay;
         }
-
     }
 
 
@@ -157,6 +158,23 @@ impl<'a> BasicUnifiedPetriExecutor<'a> {
             }
         }
         to_ret
+    }
+    fn get_possible_executable_trans(&mut self) -> Vec<usize>{
+        let simpl_marking = self.simplyfied_marking();
+
+        self.possibly_executable_trans(simpl_marking)
+    }
+
+    fn simplyfied_marking(&self) -> Vec<bool>{
+        self.place_state.iter().map(|x| x.not_phi()).collect()
+    }
+
+    fn possibly_executable_trans(&self, simpl_mark : Vec<bool>) -> Vec<usize> {
+        self.trans_order.iter()
+            .map(|x|  (x,self.net.get_places_befor_trans(*x).iter().map(|pl| simpl_mark[*pl]).collect::<Vec<bool>>()))
+            .filter(|&(ref tr_nr, ref inp)| self.net.table_for_trans(**tr_nr).possibly_executable(&inp))
+            .map(|(tr_nr, inp)| (*tr_nr).clone())
+            .collect()
     }
 
 }
