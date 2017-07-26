@@ -233,7 +233,6 @@ macro_rules! limits_of {
         $self_.limits[($fuzzy_val).index()]
                           )
 }
-const EPS: f32 = 0.00000000001;
 
 impl Fuzzyfier for TriangleFuzzyfier {
     fn fuzzyfy(&self, x: Option<f32>) -> FuzzyToken {
@@ -304,7 +303,7 @@ mod tests {
     use super::FuzzyValue::*;
 
     #[test]
-    fn TriangleFuzzyfier_zero_scale_test(){
+    fn zero_scale_test(){
         let ff = TriangleFuzzyfier::with_min_max(0.0*-1.0, 0.0);
         let rez = ff.fuzzyfy(Option::Some(0.0));
         assert_eq!(FuzzyToken::from_arr([0.0, 0.0, 1.0, 0.0, 0.0]), rez);
@@ -394,7 +393,7 @@ mod tests {
     #[test]
     fn unified_token_test() {
         let mut phi =UnifiedToken::Phi;
-        let mut zero = UnifiedToken::zero_token();
+        let zero = UnifiedToken::zero_token();
         phi.unite(zero);
         assert_eq!(phi, UnifiedToken::Exist(0.0));
     }

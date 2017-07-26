@@ -4,6 +4,7 @@ use basic::*;
 use std::collections::HashMap;
 
 #[derive(Debug)]
+#[allow(non_camel_case_types)]
 pub enum UnifiedTableE{
     oxo(UnifiedOneXOneTable),
     oxt(UnifiedOneXTwoTable),
@@ -227,5 +228,3 @@ impl UnifiedPetriNet {
     }
 
 }
-
-

@@ -1,6 +1,4 @@
 use std::fmt;
-use std::iter;
-
 
 use basic::*;
 use basic::UnifiedToken;
@@ -876,7 +874,7 @@ mod tests {
         assert_eq!(rez,  vec![t!(0.0, 0.0, 0.0, 0.5, 0.5), t!(0.5, 0.5, 0.0, 0.0, 0.0)]);
 
     }
-
+    #[test]
     fn OneXTwo_possible_executable(){
         let table = OneXTwoTable::default_table();
         assert!(table.possibly_executable(&vec![true]));

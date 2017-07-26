@@ -57,7 +57,6 @@ static IS_PHI: &'static str = "isPhi";
 static TOKNE_VAL: &'static str = "val";
 static SCALES: &'static str = "scaleForPlace";
 static TR_TO_PL: &'static str = "fromTransToPlace";
-static PL_TO_PL: &'static str = "fromPlaceToTrans";
 static TBL_TRS: &'static str = "tableForTransition";
 static TBL_TYPE: &'static str = "unfiedType";
 static TBL_DATA: &'static str = "unifiedData";

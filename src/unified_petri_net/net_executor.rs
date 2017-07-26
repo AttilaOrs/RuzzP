@@ -1,13 +1,16 @@
 
 extern crate fnv;
 
-use tables::*;
-use basic::*;
+
+
+
 use unified_petri_net::net_builder::{UnifiedPetriNet, EventManager};
+use basic::*;
 use std::mem;
 use std::collections::HashMap;
 use self::fnv::FnvHasher;
 use std::hash::BuildHasherDefault;
+
 
 
 type MyHasher = BuildHasherDefault<FnvHasher>;
@@ -102,7 +105,7 @@ impl<'a> BasicUnifiedPetriExecutor<'a> {
     fn start_fire(&mut self, tr_id: usize, inp_tokens: Vec<UnifiedToken>) {
 
         self.clear_inp_tokens(tr_id);
-        let mut rez = vec![];
+        let rez ;
         {
             let defuzz = self.get_out_scales(tr_id);
             let fuzz = self.get_inp_scales(tr_id);
@@ -185,7 +188,7 @@ impl<'a> BasicUnifiedPetriExecutor<'a> {
         self.trans_order.iter()
             .map(|x|  (x,self.net.get_places_befor_trans(*x).iter().map(|pl| simpl_mark[*pl]).collect::<Vec<bool>>()))
             .filter(|&(ref tr_nr, ref inp)| self.net.table_for_trans(**tr_nr).possibly_executable(&inp))
-            .map(|(tr_nr, inp)| (*tr_nr).clone())
+            .map(|(tr_nr, _)| (*tr_nr).clone())
             .collect()
     }
 
@@ -266,9 +269,8 @@ impl<'a> SynchronousUnifiedPetriExecutor<'a> {
 mod tests {
 
     use super::*;
-    use unified_petri_net::net_builder::*;
-    use basic::*;
     use tables::*;
+    use unified_petri_net::net_builder::*;
     use std::cell::RefCell;
     use std::rc::Rc;
 
@@ -311,10 +313,6 @@ mod tests {
             to_ret
         }
 
-        pub fn clear_history(&self)  {
-            self.hist.borrow_mut().rez.clear();
-        }
-
     }
 
     pub fn simple_delay_net() -> (UnifiedPetriNet, EventManager, ConsumerFactory) {
@@ -352,8 +350,8 @@ mod tests {
     }
 
     #[test]
-    fn SimpleDelayNet_test(){
-       let (net, event_manager, mut cons_fact) =simple_delay_net();
+    fn simple_delay_net_test(){
+       let (net, event_manager, cons_fact) =simple_delay_net();
        let mut exec = SynchronousUnifiedPetriExecutor::new(&net, event_manager);
 
        let inp = vec![(0, UnifiedToken::from_val(0.0))];

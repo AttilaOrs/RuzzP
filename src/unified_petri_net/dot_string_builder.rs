@@ -3,7 +3,7 @@ use std::fs::File;
 use std::collections::HashMap;
 
 use basic::*;
-use petri_net::petri_net_builder::*;
+use unified_petri_net::net_builder::UnifiedPetriNet;
 
 
 pub struct DotStringBuilder {
@@ -15,7 +15,7 @@ pub struct DotStringBuilder {
 use std;
 
 impl DotStringBuilder{
-    pub fn build(net: &FuzzyPetriNet) -> DotStringBuilder {
+    pub fn build(net: &UnifiedPetriNet) -> DotStringBuilder {
         let mut builder = DotStringBuilder {
             dot_string : String::from(""),
             place_ids: HashMap::new(),
@@ -46,40 +46,33 @@ impl DotStringBuilder{
         self.dot_string.push_str("\n}");
     }
 
-    fn add_arcs_from_places(&mut self, net : &FuzzyPetriNet) {
+    fn add_arcs_from_places(&mut self, net : &UnifiedPetriNet) {
         for place_id in 0..net.get_place_nr() {
             let trans_ids = net.get_tanss_after_place(place_id);
             for trans_id in trans_ids {
                 self.dot_string.push('\"');
                 self.dot_string.push_str(&self.place_ids[&place_id]);
                 self.dot_string.push_str("\"->");
-                self.dot_string.push_str(&self.trans_ids[&trans_id]);
-
-                let weigth =net.get_weigth_for_arc(place_id, trans_id);
-                if weigth != 1.0 {
-                    self.dot_string.push_str("[ label=\" ");
-                    self.dot_string.push_str(&weigth.to_string());
-                    self.dot_string.push_str("\"] ");
-                }
+                self.dot_string.push_str(&self.trans_ids[trans_id]);
                 self.dot_string.push_str(";\n");
             }
         }
     }
 
-    fn add_arcs_from_transs(&mut self, net : &FuzzyPetriNet) {
+    fn add_arcs_from_transs(&mut self, net : &UnifiedPetriNet) {
         for trans_id in 0..net.get_trans_nr() {
             let place_ids = net.get_places_after_trans(trans_id);
             for place_id in place_ids {
                 self.dot_string.push_str(&self.trans_ids[&trans_id]);
                 self.dot_string.push_str("->\"");
-                self.dot_string.push_str(&self.place_ids[&place_id]);
+                self.dot_string.push_str(&self.place_ids[place_id]);
                 self.dot_string.push_str("\";\n");
             }
         }
     }
 
 
-    fn add_transs(&mut self, net: &FuzzyPetriNet){
+    fn add_transs(&mut self, net: &UnifiedPetriNet){
         self.dot_string.push_str("subgraph trans {
         node [style=filled fillcolor=black shape=rect height=1 width=0.05];\n");
         for trans_id in 0..net.get_trans_nr()  {
@@ -96,7 +89,7 @@ impl DotStringBuilder{
 
     }
 
-    fn create_trans_label(net: &FuzzyPetriNet, trans_id : usize) -> String {
+    fn create_trans_label(net: &UnifiedPetriNet, trans_id : usize) -> String {
         let mut to_ret = String::from("");
         if net.is_trans_out(trans_id){
             to_ret.push('o');
@@ -120,7 +113,7 @@ impl DotStringBuilder{
         to_ret
     }
 
-    fn add_places(&mut self, net: &FuzzyPetriNet) {
+    fn add_places(&mut self, net: &UnifiedPetriNet) {
         self.dot_string.push_str("subgraph palce {
         graph [shape=circle,color=gray];node [shape=circle,fixedsize=true,width=0.4];");
         for place_id in 0..net.get_place_nr() {
@@ -137,7 +130,7 @@ impl DotStringBuilder{
 
     }
 
-    fn create_place_id(net: &FuzzyPetriNet, place_id : usize) -> String {
+    fn create_place_id(net: &UnifiedPetriNet, place_id : usize) -> String {
         let mut to_ret = String::from("");
         if net.is_place_inp(place_id) {
             to_ret.push('i');
@@ -145,7 +138,7 @@ impl DotStringBuilder{
         to_ret.push('P');
         to_ret.push_str(&place_id.to_string());
 
-        if net.get_initial_marking(place_id) != FuzzyToken::Phi {
+        if net.get_initial_marking(place_id).not_phi() {
             to_ret.push('●');
         };
         to_ret
@@ -159,23 +152,22 @@ mod tests {
     #![allow(non_snake_case)]
     use super::*;
     use tables::*;
-    use basic::*;
-    use petri_net::petri_net_builder::{FuzzyTableE, FuzzyPetriNetBuilder};
+    use unified_petri_net::net_builder::*;
 
     #[test]
     fn dot_builder_test() {
-        let mut bld = FuzzyPetriNetBuilder::new();
-        let i_p0 = bld.add_inp_place();
-        let t0 = bld.add_trans(0, FuzzyTableE::oxo(OneXOneTable::default_table()));
-        let p1 = bld.add_place();
-        bld.set_initial_token(p1, FuzzyToken::zero_token());
-        bld.add_arc_from_place_to_trans(i_p0, t0, 0.5);
-        bld.add_arc_from_trans_to_place(t0, p1);
-        let t1 = bld.add_trans(2, FuzzyTableE::oxo(OneXOneTable::default_table()));
-        bld.add_arc_from_place_to_trans(p1, t1, 0.375);
-        bld.add_arc_from_trans_to_place(t1, i_p0);
-        let oT2 = bld.add_out_trans(FuzzyTableE::oxo(OneXOneTable::default_table()));
-        bld.add_arc_from_place_to_trans(p1, oT2, 1.0);
+        let mut bld = UnifiedPetriNetBuilder::new();
+        let i_p0 = bld.add_inp_place(1.0);
+        let t0 = bld.add_transition(0, UnifiedTableE::oxo(UnifiedOneXOneTable::default_table()));
+        let p1 = bld.add_place(2.0);
+        bld.set_innitial_marking(p1, UnifiedToken::from_val(0.0));
+        bld.connect_place_with_transition(i_p0, t0);
+        bld.connect_transition_with_place(t0, p1);
+        let t1 = bld.add_transition(2, UnifiedTableE::oxo(UnifiedOneXOneTable::default_table()));
+        bld.connect_place_with_transition(p1, t1);
+        bld.connect_transition_with_place(t1, i_p0);
+        let oT2 = bld.add_out_transition(UnifiedTableE::oxo(UnifiedOneXOneTable::default_table()));
+        bld.connect_place_with_transition(p1, oT2);
 
         let (net,_) = bld.build();
         let dot_bld = DotStringBuilder::build(&net);
@@ -190,4 +182,5 @@ mod tests {
         assert!(dot_bld.dot_string.contains("t0->\"P1●\"") );
         assert!(dot_bld.dot_string.contains("t1->\"iP0\"") );
     }
+
 }
