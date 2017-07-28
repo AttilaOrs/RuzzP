@@ -2,7 +2,6 @@ use std::io::prelude::*;
 use std::fs::File;
 use std::collections::HashMap;
 
-use basic::*;
 use unified_petri_net::net_builder::UnifiedPetriNet;
 
 
@@ -153,6 +152,7 @@ mod tests {
     use super::*;
     use tables::*;
     use unified_petri_net::net_builder::*;
+    use basic::*;
 
     #[test]
     fn dot_builder_test() {
