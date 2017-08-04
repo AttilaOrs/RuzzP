@@ -1,6 +1,7 @@
 
 extern crate fnv;
-
+extern crate timer;
+extern crate chrono;
 
 
 
@@ -10,8 +11,12 @@ use std::mem;
 use std::collections::HashMap;
 use self::fnv::FnvHasher;
 use std::hash::BuildHasherDefault;
+use std::sync::mpsc::*;
+use std::thread;
 
 
+use self::timer::*;
+use self::chrono::Duration;
 
 type MyHasher = BuildHasherDefault<FnvHasher>;
 
@@ -186,8 +191,10 @@ impl<'a> BasicUnifiedPetriExecutor<'a> {
 
     fn possibly_executable_trans(&self, simpl_mark : &Vec<bool>) -> Vec<usize> {
         self.trans_order.iter()
-            .map(|x|  (x,self.net.get_places_befor_trans(*x).iter().map(|pl| simpl_mark[*pl]).collect::<Vec<bool>>()))
-            .filter(|&(ref tr_nr, ref inp)| self.net.table_for_trans(**tr_nr).possibly_executable(&inp))
+            .map(|x|  (x,self.net.get_places_befor_trans(*x).iter().map(|pl| simpl_mark[*pl])
+                       .collect::<Vec<bool>>()))
+            .filter(|&(ref tr_nr, ref inp)|
+                    self.net.table_for_trans(**tr_nr).possibly_executable(&inp))
             .map(|(tr_nr, _)| (*tr_nr).clone())
             .collect()
     }
@@ -263,7 +270,110 @@ impl<'a> SynchronousUnifiedPetriExecutor<'a> {
         self.basic.execute_firable_transitions();
     }
 }
+pub enum AsyncExecutorMsg {
+    Tick,
+    Input(Vec<(usize, UnifiedToken)>),
+    Stop,
+}
 
+pub struct AsynchronousUnifiedPetriExecutor<'a>{
+    basic : BasicUnifiedPetriExecutor<'a>,
+    tx : Sender<AsyncExecutorMsg>,
+    rx : Receiver<AsyncExecutorMsg>,
+}
+
+impl<'a> AsynchronousUnifiedPetriExecutor<'a> {
+    pub fn new(net: &UnifiedPetriNet, men: EventManager) -> AsynchronousUnifiedPetriExecutor {
+        let (tx, rx) = channel();
+        AsynchronousUnifiedPetriExecutor {
+            basic: BasicUnifiedPetriExecutor::new(net, men),
+            tx : tx,
+            rx : rx,
+        }
+    }
+
+    pub fn getSender(&self) -> Sender<AsyncExecutorMsg> {
+        self.tx.clone()
+    }
+
+    pub fn run(&mut self){
+        loop {
+            let rez = self.rx.recv().unwrap();
+            match rez {
+               AsyncExecutorMsg::Tick
+                   => {self.basic.update_delay_state();
+                       self.basic.execute_firable_transitions(); },
+               AsyncExecutorMsg::Input(v)
+                   => {self.basic.put_tokens_to_inp_places(v);
+                       self.basic.execute_firable_transitions();},
+               AsyncExecutorMsg::Stop => break,
+            }
+        }
+    }
+}
+
+/*
+pub struct AsynchronousThreadedUnifiedPetriExecutor<'a>{
+    basic : BasicUnifiedPetriExecutor<'a>,
+    tx : Sender<AsyncExecutorMsg>,
+    rx : Receiver<AsyncExecutorMsg>,
+    dur : Duration,
+}
+
+pub struct ExecutorGuard {
+    timerGuard: Guard,
+    sender : Sender<AsyncExecutorMsg>,
+}
+
+
+impl<'a> AsynchronousThreadedUnifiedPetriExecutor<'static> {
+    pub fn new(net: &''UnifiedPetriNet , men: EventManager, dur :Duration)
+        -> AsynchronousThreadedUnifiedPetriExecutor<'a> {
+
+        let (tx, rx) = channel();
+        AsynchronousThreadedUnifiedPetriExecutor {
+            basic: BasicUnifiedPetriExecutor::new(net, men),
+            tx : tx,
+            rx : rx,
+            dur : dur,
+        }
+    }
+
+    pub fn getSender(&self) -> Sender<AsyncExecutorMsg> {
+        self.tx.clone()
+    }
+
+    pub fn start(self) -> ExecutorGuard {
+        let timer = Timer::new();
+        let sender = self.getSender();
+        let guard = timer.schedule_repeating(self.dur, move ||{
+            sender.send(AsyncExecutorMsg::Tick);
+        });
+
+        let execGurad = ExecutorGuard {
+            timerGuard : guard,
+            sender : self.getSender(),
+        };
+
+        thread::spawn (move || {
+            let mut s = self;
+            loop {
+                let rez = s.rx.recv().unwrap();
+                match rez {
+                   AsyncExecutorMsg::Tick
+                       => {s.basic.update_delay_state();
+                           s.basic.execute_firable_transitions(); },
+                   AsyncExecutorMsg::Input(v)
+                       => {s.basic.put_tokens_to_inp_places(v);
+                           s.basic.execute_firable_transitions();},
+                   AsyncExecutorMsg::Stop => break,
+                }
+            }
+        });
+        execGurad
+    }
+}
+*/
 
 #[cfg(test)]
 mod tests {
@@ -271,33 +381,32 @@ mod tests {
     use super::*;
     use tables::*;
     use unified_petri_net::net_builder::*;
-    use std::cell::RefCell;
-    use std::rc::Rc;
+    use std::sync::*;
 
     struct History{
         rez : Vec<(usize,UnifiedToken)>,
     }
 
     struct MyConsumer {
-        hist: Rc<RefCell<History>>,
+        hist: Arc<RwLock<History>>,
         tr_id : usize,
     }
 
     impl UnifiedTokenConsumer for MyConsumer {
         fn consume(&mut self, ft: UnifiedToken){
-            self.hist.borrow_mut().rez.push((self.tr_id, ft));
+            self.hist.write().unwrap().rez.push((self.tr_id, ft));
         }
     }
 
     pub struct ConsumerFactory {
-        hist: Rc<RefCell<History>>,
+        hist: Arc<RwLock<History>>,
     }
 
     impl ConsumerFactory {
         fn new()-> ConsumerFactory{
             let hist = History{rez: Vec::new()};
             ConsumerFactory{
-                hist: Rc::new(RefCell::new(hist)),
+                hist: Arc::new(RwLock::new(hist)),
             }
         }
 
@@ -307,7 +416,7 @@ mod tests {
 
         pub fn get_current_hist(&self) -> Vec<(usize, UnifiedToken)> {
             let mut to_ret = Vec::new();
-            for i in &self.hist.borrow().rez {
+            for i in &self.hist.read().unwrap().rez {
                 to_ret.push(i.clone());
             }
             to_ret

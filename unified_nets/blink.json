@@ -1,0 +1,130 @@
+{
+  "scaleForPlace": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "delayForTransition": [
+    0,
+    0,
+    10
+  ],
+  "delayMulitiperForTransition": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "tableForTransition": [
+    {
+      "unfiedType": "u1x1",
+      "unifiedData": {
+        "table": {
+          "valTable": {
+            "NL": "NL",
+            "NM": "NM",
+            "ZR": "ZR",
+            "PM": "PM",
+            "PL": "PL",
+            "FF": "FF"
+          }
+        }
+      }
+    },
+    {
+      "unfiedType": "u1x2",
+      "unifiedData": {
+        "table": {
+          "valTable1": {
+            "NL": "NL",
+            "NM": "NM",
+            "ZR": "ZR",
+            "PM": "PM",
+            "PL": "PL",
+            "FF": "FF"
+          },
+          "valTable2": {
+            "NL": "NL",
+            "NM": "NM",
+            "ZR": "ZR",
+            "PM": "PM",
+            "PL": "PL",
+            "FF": "FF"
+          }
+        }
+      }
+    },
+    {
+      "unfiedType": "u1x1",
+      "unifiedData": {
+        "table": {
+          "valTable": {
+            "NL": "NL",
+            "NM": "NM",
+            "ZR": "ZR",
+            "PM": "PM",
+            "PL": "PL",
+            "FF": "FF"
+          }
+        }
+      }
+    }
+  ],
+  "fromTransToPlace": [
+    [],
+    [
+      1,
+      2
+    ],
+    [
+      0
+    ]
+  ],
+  "fromPlaceToTrans": [
+    [
+      1
+    ],
+    [
+      0
+    ],
+    [
+      2
+    ]
+  ],
+  "placesNeededForTrans": [
+    [
+      1
+    ],
+    [
+      0
+    ],
+    [
+      2
+    ]
+  ],
+  "initialMarkingOfThePlaces": [
+    {
+      "val": 0.0,
+      "isPhi": false
+    },
+    {
+      "val": null,
+      "isPhi": true
+    },
+    {
+      "val": null,
+      "isPhi": true
+    }
+  ],
+  "isInputPlaces": [
+    false,
+    false,
+    false
+  ],
+  "isOutputTransition": [
+    true,
+    false,
+    false
+  ],
+  "transitionCntr": 3,
+  "placeCntr": 3
+}

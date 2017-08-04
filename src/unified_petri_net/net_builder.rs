@@ -65,7 +65,7 @@ impl Place {
 
 }
 
-pub trait UnifiedTokenConsumer {
+pub trait UnifiedTokenConsumer : Send{
     fn consume(&mut self, ft: UnifiedToken);
 }
 
