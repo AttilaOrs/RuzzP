@@ -20,8 +20,8 @@ use self::chrono::Duration;
 
 type MyHasher = BuildHasherDefault<FnvHasher>;
 
-struct BasicUnifiedPetriExecutor<'a> {
-    net: &'a UnifiedPetriNet,
+struct BasicUnifiedPetriExecutor {
+    net: UnifiedPetriNet,
     event_manager: EventManager,
     place_state: Vec<UnifiedToken>,
     trans_state: Vec<i32>,
@@ -31,18 +31,18 @@ struct BasicUnifiedPetriExecutor<'a> {
     cached_possibly_exec : HashMap<Vec<bool>, Vec<usize>,MyHasher>,
 }
 
-impl<'a> BasicUnifiedPetriExecutor<'a> {
+impl BasicUnifiedPetriExecutor {
 
-    pub fn new(net : &UnifiedPetriNet, men: EventManager) -> BasicUnifiedPetriExecutor {
+    pub fn new(net : UnifiedPetriNet, men: EventManager) -> BasicUnifiedPetriExecutor {
         BasicUnifiedPetriExecutor{
-            net: net,
-            event_manager: men,
-            place_state: init_place_state(net),
+            scales :init_scales(&net),
+            trans_order: order_of_transitions(&net),
+            place_state: init_place_state(&net),
             trans_state: vec![0; net.get_trans_nr()],
             trans_holds: vec![vec![]; net.get_trans_nr()],
-            trans_order: order_of_transitions(net),
-            scales :init_scales(net),
+            event_manager: men,
             cached_possibly_exec: HashMap::default(),
+            net: net,
         }
     }
 
@@ -253,12 +253,12 @@ fn order_of_transitions(net: &UnifiedPetriNet) -> Vec<usize> {
 }
 
 
-pub struct SynchronousUnifiedPetriExecutor<'a>{
-    basic : BasicUnifiedPetriExecutor<'a>,
+pub struct SynchronousUnifiedPetriExecutor{
+    basic : BasicUnifiedPetriExecutor,
 }
 
-impl<'a> SynchronousUnifiedPetriExecutor<'a> {
-    pub fn new(net: &UnifiedPetriNet, men: EventManager) -> SynchronousUnifiedPetriExecutor {
+impl SynchronousUnifiedPetriExecutor {
+    pub fn new(net: UnifiedPetriNet, men: EventManager) -> SynchronousUnifiedPetriExecutor {
         SynchronousUnifiedPetriExecutor {
             basic: BasicUnifiedPetriExecutor::new(net, men),
         }
@@ -276,14 +276,14 @@ pub enum AsyncExecutorMsg {
     Stop,
 }
 
-pub struct AsynchronousUnifiedPetriExecutor<'a>{
-    basic : BasicUnifiedPetriExecutor<'a>,
+pub struct AsynchronousUnifiedPetriExecutor{
+    basic : BasicUnifiedPetriExecutor,
     tx : Sender<AsyncExecutorMsg>,
     rx : Receiver<AsyncExecutorMsg>,
 }
 
-impl<'a> AsynchronousUnifiedPetriExecutor<'a> {
-    pub fn new(net: &UnifiedPetriNet, men: EventManager) -> AsynchronousUnifiedPetriExecutor {
+impl AsynchronousUnifiedPetriExecutor {
+    pub fn new(net: UnifiedPetriNet, men: EventManager) -> AsynchronousUnifiedPetriExecutor {
         let (tx, rx) = channel();
         AsynchronousUnifiedPetriExecutor {
             basic: BasicUnifiedPetriExecutor::new(net, men),
@@ -312,9 +312,8 @@ impl<'a> AsynchronousUnifiedPetriExecutor<'a> {
     }
 }
 
-/*
-pub struct AsynchronousThreadedUnifiedPetriExecutor<'a>{
-    basic : BasicUnifiedPetriExecutor<'a>,
+pub struct AsynchronousThreadedUnifiedPetriExecutor{
+    basic : BasicUnifiedPetriExecutor,
     tx : Sender<AsyncExecutorMsg>,
     rx : Receiver<AsyncExecutorMsg>,
     dur : Duration,
@@ -323,12 +322,22 @@ pub struct AsynchronousThreadedUnifiedPetriExecutor<'a>{
 pub struct ExecutorGuard {
     timerGuard: Guard,
     sender : Sender<AsyncExecutorMsg>,
+    t: Timer,
 }
 
+impl ExecutorGuard {
+    pub fn stop(self) {/* the drop should resolve it*/}
+}
 
-impl<'a> AsynchronousThreadedUnifiedPetriExecutor<'static> {
-    pub fn new(net: &''UnifiedPetriNet , men: EventManager, dur :Duration)
-        -> AsynchronousThreadedUnifiedPetriExecutor<'a> {
+impl Drop for ExecutorGuard{
+    fn drop(&mut self) {
+        self.sender.send(AsyncExecutorMsg::Stop);
+    }
+}
+
+impl AsynchronousThreadedUnifiedPetriExecutor {
+    pub fn new(net: UnifiedPetriNet , men: EventManager, dur :Duration)
+        -> AsynchronousThreadedUnifiedPetriExecutor {
 
         let (tx, rx) = channel();
         AsynchronousThreadedUnifiedPetriExecutor {
@@ -339,20 +348,21 @@ impl<'a> AsynchronousThreadedUnifiedPetriExecutor<'static> {
         }
     }
 
-    pub fn getSender(&self) -> Sender<AsyncExecutorMsg> {
+    pub fn get_sender(&self) -> Sender<AsyncExecutorMsg> {
         self.tx.clone()
     }
 
     pub fn start(self) -> ExecutorGuard {
         let timer = Timer::new();
-        let sender = self.getSender();
+        let sender = self.get_sender();
         let guard = timer.schedule_repeating(self.dur, move ||{
-            sender.send(AsyncExecutorMsg::Tick);
+             sender.send(AsyncExecutorMsg::Tick).unwrap();
         });
 
-        let execGurad = ExecutorGuard {
+        let exec_guard = ExecutorGuard {
             timerGuard : guard,
-            sender : self.getSender(),
+            sender : self.get_sender(),
+            t : timer,
         };
 
         thread::spawn (move || {
@@ -360,20 +370,21 @@ impl<'a> AsynchronousThreadedUnifiedPetriExecutor<'static> {
             loop {
                 let rez = s.rx.recv().unwrap();
                 match rez {
-                   AsyncExecutorMsg::Tick
-                       => {s.basic.update_delay_state();
-                           s.basic.execute_firable_transitions(); },
+                   AsyncExecutorMsg::Tick=> {
+                       s.basic.update_delay_state();
+                       s.basic.execute_firable_transitions();
+                   },
                    AsyncExecutorMsg::Input(v)
                        => {s.basic.put_tokens_to_inp_places(v);
                            s.basic.execute_firable_transitions();},
                    AsyncExecutorMsg::Stop => break,
                 }
             }
+
         });
-        execGurad
+        exec_guard
     }
 }
-*/
 
 #[cfg(test)]
 mod tests {
@@ -461,7 +472,7 @@ mod tests {
     #[test]
     fn simple_delay_net_test(){
        let (net, event_manager, cons_fact) =simple_delay_net();
-       let mut exec = SynchronousUnifiedPetriExecutor::new(&net, event_manager);
+       let mut exec = SynchronousUnifiedPetriExecutor::new(net, event_manager);
 
        let inp = vec![(0, UnifiedToken::from_val(0.0))];
        exec.run_tick(inp);

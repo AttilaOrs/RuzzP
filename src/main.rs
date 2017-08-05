@@ -8,6 +8,7 @@ use ruzz_p::basic::*;
 
 use time::precise_time_ns;
 use chrono::Duration;
+use std::thread;
 
 struct k;
 impl UnifiedTokenConsumer for k{
@@ -25,14 +26,13 @@ fn main() {
 
     let (net, mut man) = bld.build();
     man.add(0, Box::new(k{}));
-    /*
 
     let mut exec = AsynchronousThreadedUnifiedPetriExecutor::
-        new(&net, man, Duration::milliseconds(1000));
-    exec.start();
-    */
+        new(net, man, Duration::milliseconds(100));
+    let guard = exec.start();
 
+    let ten = std::time::Duration::from_millis(10*1000);
+    thread::sleep(ten);
     let stop = precise_time_ns();
-
     println!(">>> done {:?}", stop-start);
 }

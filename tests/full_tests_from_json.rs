@@ -72,7 +72,7 @@ fn controller_net_test(){
     let mut consumer_fact = ConsumerFactory::new();
     consumer_fact.create_handler_for_all_outs(&net, &mut man );
 
-    let mut exec = SynchronousUnifiedPetriExecutor::new(&net, man);
+    let mut exec = SynchronousUnifiedPetriExecutor::new(net, man);
     let inp = vec![
         (2, UnifiedToken::from_val(0.0)),
         (4, UnifiedToken::from_val(30.0)),
@@ -98,7 +98,7 @@ fn lane() {
     let mut consumer_fact = ConsumerFactory::new();
     consumer_fact.create_handler_for_all_outs(&net, &mut man );
 
-    let mut exec = SynchronousUnifiedPetriExecutor::new(&net, man);
+    let mut exec = SynchronousUnifiedPetriExecutor::new(net, man);
     let inp = vec![
         (2, UnifiedToken::from_val(0.0)),
     ];
@@ -152,7 +152,7 @@ fn max_finder() {
     let mut consumer_fact = ConsumerFactory::new();
     consumer_fact.create_handler_for_all_outs(&net, &mut man );
 
-    let mut exec = SynchronousUnifiedPetriExecutor::new(&net, man);
+    let mut exec = SynchronousUnifiedPetriExecutor::new(net.clone(), man);
     let inp = vec![
         (0, UnifiedToken::from_val(0.0)),
         (1, UnifiedToken::from_val(0.3)),
