@@ -34,9 +34,10 @@ impl UnifiedTokenConsumer for MyConsumer {
                 self.i.set_value(1).unwrap();
 	   self.l = true;
         }
-	println!("{:?}", self.l);
+        println!("{:?}", self.l);
     }
 }
+
 
 fn main() {
     let ww = my_file_read("unified_nets/blink.json");
@@ -50,27 +51,12 @@ fn main() {
     let (net, mut manager) = bld.build();
     manager.add(0, Box::new(MyConsumer{i:my_led, l:true}));
 
-    let mut exec = SynchronousUnifiedPetriExecutor::new(&net, manager);
 
-    let (tx, rx): (Sender<i32>, Receiver<i32>) = mpsc::channel();
+    let mut exec = AsynchronousThreadedUnifiedPetriExecutor::
+        new(net, manager, Duration::milliseconds(100));
+    let guard = exec.start();
 
-
-    let timer = Timer::new();
-    let guard = timer.schedule_repeating(Duration::milliseconds(250), move||{
-        tx.send(12);
-    });
-    let mut count = 0;
-    loop {
-        rx.recv();
-        let inp = vec![];
-        exec.run_tick(inp);
-        count+=1;
-        if count > 100 {
-            break;
-        }
-
-    }
-
+    let ten = std::time::Duration::from_millis(10*1000);
+    thread::sleep(ten);
     let stop = precise_time_ns();
-    drop(guard);
 }

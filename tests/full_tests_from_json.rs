@@ -1,37 +1,34 @@
-use std::cell::RefCell;
-use std::rc::Rc;
+use std::sync::*;
 
 extern crate ruzz_p;
 use ruzz_p::read_petri::{my_file_read, deseralize};
 use ruzz_p::unified_petri_net::*;
 use ruzz_p::basic::*;
 
-
-
 struct History{
-    rez : Vec<(usize, UnifiedToken)>,
+    rez : Vec<(usize,UnifiedToken)>,
 }
 
 struct MyConsumer {
-    hist: Rc<RefCell<History>>,
+    hist: Arc<RwLock<History>>,
     tr_id : usize,
 }
 
 impl UnifiedTokenConsumer for MyConsumer {
     fn consume(&mut self, ft: UnifiedToken){
-        self.hist.borrow_mut().rez.push((self.tr_id, ft));
+        self.hist.write().unwrap().rez.push((self.tr_id, ft));
     }
 }
 
 pub struct ConsumerFactory {
-    hist: Rc<RefCell<History>>,
+    hist: Arc<RwLock<History>>,
 }
 
 impl ConsumerFactory {
     fn new()-> ConsumerFactory{
         let hist = History{rez: Vec::new()};
         ConsumerFactory{
-            hist: Rc::new(RefCell::new(hist)),
+            hist: Arc::new(RwLock::new(hist)),
         }
     }
 
@@ -41,17 +38,17 @@ impl ConsumerFactory {
 
     pub fn get_current_hist(&self) -> Vec<(usize, UnifiedToken)> {
         let mut to_ret = Vec::new();
-        for i in &self.hist.borrow().rez {
+        for i in &self.hist.read().unwrap().rez {
             to_ret.push(i.clone());
         }
         to_ret
     }
 
     pub fn clear_history(&self)  {
-        self.hist.borrow_mut().rez.clear();
+        self.hist.write().unwrap().rez.clear();
     }
 
-    fn create_handler_for_all_outs(&mut self,
+    pub fn create_handler_for_all_outs(&mut self,
                                    net: &UnifiedPetriNet, manager: &mut EventManager ){
         for tr_id in 0..net.get_trans_nr() {
             if net.is_trans_out(tr_id) {
@@ -75,7 +72,7 @@ fn controller_net_test(){
     let mut consumer_fact = ConsumerFactory::new();
     consumer_fact.create_handler_for_all_outs(&net, &mut man );
 
-    let mut exec = SynchronousUnifiedPetriExecutor::new(&net, man);
+    let mut exec = SynchronousUnifiedPetriExecutor::new(net, man);
     let inp = vec![
         (2, UnifiedToken::from_val(0.0)),
         (4, UnifiedToken::from_val(30.0)),
@@ -101,7 +98,7 @@ fn lane() {
     let mut consumer_fact = ConsumerFactory::new();
     consumer_fact.create_handler_for_all_outs(&net, &mut man );
 
-    let mut exec = SynchronousUnifiedPetriExecutor::new(&net, man);
+    let mut exec = SynchronousUnifiedPetriExecutor::new(net, man);
     let inp = vec![
         (2, UnifiedToken::from_val(0.0)),
     ];
@@ -155,7 +152,7 @@ fn max_finder() {
     let mut consumer_fact = ConsumerFactory::new();
     consumer_fact.create_handler_for_all_outs(&net, &mut man );
 
-    let mut exec = SynchronousUnifiedPetriExecutor::new(&net, man);
+    let mut exec = SynchronousUnifiedPetriExecutor::new(net.clone(), man);
     let inp = vec![
         (0, UnifiedToken::from_val(0.0)),
         (1, UnifiedToken::from_val(0.3)),
@@ -175,4 +172,3 @@ fn max_finder() {
     assert_eq!(vec![(0, UnifiedToken::Exist(0.2))], current_hist);
 
 }
-

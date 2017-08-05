@@ -80,7 +80,7 @@ pub trait ExecutableUnifiedTable {
     fn possibly_executable(&self, inps: &Vec<bool> ) -> bool;
 }
 
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub struct UnifiedOneXOneTable {
     fuzzy_table: OneXOneTable,
 }
@@ -112,7 +112,7 @@ impl ExecutableUnifiedTable for UnifiedOneXOneTable {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct OneXOneTable {
     values: [TableValue; 6],
 }
@@ -183,7 +183,7 @@ impl ExecutableFuzzyTable for OneXOneTable {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub struct  UnifiedOneXTwoTable {
     fuzzy_table : OneXTwoTable,
 }
@@ -216,7 +216,7 @@ impl ExecutableUnifiedTable for UnifiedOneXTwoTable {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub struct OneXTwoTable {
     values: [TableValue; 12],
 }
@@ -301,7 +301,7 @@ impl ExecutableFuzzyTable for OneXTwoTable {
     }
 }
 
-#[derive( Debug)]
+#[derive(Debug,Clone)]
 pub struct UnifiedTwoXOneTable{
     fuzzy_table : TwoXOneTable,
     op : Operator,
@@ -406,6 +406,16 @@ impl TwoXOneTable {
     }
 }
 
+impl Clone for TwoXOneTable {
+    fn clone(&self) -> TwoXOneTable {
+        let mut vals :[TableValue; 36]= [Phi; 36];
+        for i in 0..36 {
+            vals[i] = self.values[i];
+        }
+        TwoXOneTable {values : vals}
+    }
+}
+
 macro_rules! txo_get {
     ($self_:ident, $val_r: ident, $val_c: ident) =>  (
         $self_.values[$val_r.index()*6 + $val_c.index()]
@@ -490,7 +500,7 @@ fn index_for(i : bool) -> Vec<TableValue> {
     }
 }
 
-#[derive( Debug)]
+#[derive(Debug,Clone)]
 pub struct UnifiedTwoXTwoTable{
     fuzzy_table : TwoXTwoTable,
     op : Operator,
@@ -562,6 +572,16 @@ impl ExecutableUnifiedTable for UnifiedTwoXTwoTable {
 
 pub struct TwoXTwoTable  {
     values: [TableValue; 72],
+}
+
+impl Clone for TwoXTwoTable {
+    fn clone(&self) -> TwoXTwoTable {
+        let mut vals :[TableValue; 72]= [Phi; 72];
+        for i in 0..72 {
+            vals[i] = self.values[i];
+        }
+        TwoXTwoTable {values : vals}
+    }
 }
 
 

@@ -3,7 +3,7 @@ use tables::*;
 use basic::*;
 use std::collections::HashMap;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[allow(non_camel_case_types)]
 pub enum UnifiedTableE{
     oxo(UnifiedOneXOneTable),
@@ -23,6 +23,7 @@ impl UnifiedTableE {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct Trans{
     delay: i32,
     table: UnifiedTableE,
@@ -44,6 +45,7 @@ impl Trans {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct Place{
     scale: f32,
     is_inp: bool,
@@ -65,7 +67,7 @@ impl Place {
 
 }
 
-pub trait UnifiedTokenConsumer {
+pub trait UnifiedTokenConsumer : Send{
     fn consume(&mut self, ft: UnifiedToken);
 }
 
@@ -93,6 +95,7 @@ impl EventManager {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct UnifiedPetriNet {
     transitions : Vec<Trans>,
     places : Vec<Place>,
