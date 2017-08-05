@@ -30,13 +30,13 @@ impl FuzzyValue {
     }
 }
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Debug, Clone,Copy)]
 pub enum FuzzyToken {
     Phi,
     Exist([f32; 5]),
 }
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Debug, Clone, Copy)]
 pub enum UnifiedToken{
     Phi,
     Exist(f32),
@@ -182,7 +182,7 @@ pub trait Defuzzyfier {
     fn limit(&self, v: f32) -> f32;
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone, Copy)]
 pub struct TriangleFuzzyfier {
     limits : [[f32; 3]; 5],
 }
